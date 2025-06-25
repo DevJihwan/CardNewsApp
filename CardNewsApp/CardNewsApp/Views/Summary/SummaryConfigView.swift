@@ -9,8 +9,6 @@ struct SummaryConfigView: View {
         language: .korean,
         tone: .friendly
     )
-    @State private var showAPIKeyAlert = false
-    @State private var tempAPIKey = ""
     @State private var isGeneratingSummary = false
     @State private var showSummaryResult = false
     @State private var generatedSummary: SummaryResult?
@@ -30,9 +28,6 @@ struct SummaryConfigView: View {
                     // 상단 문서 정보
                     documentInfoSection
                     
-                    // API 키 설정 섹션
-                    apiKeySection
-                    
                     // 카드 수 선택
                     cardCountSection
                     
@@ -44,9 +39,6 @@ struct SummaryConfigView: View {
                     
                     // 톤 선택
                     toneSection
-                    
-                    // 예상 토큰 사용량
-                    tokenEstimationSection
                     
                     // 생성 버튼
                     generateButton
@@ -65,19 +57,6 @@ struct SummaryConfigView: View {
                     }
                 }
             }
-            .alert("API 키 입력", isPresented: $showAPIKeyAlert) {
-                TextField("Claude API 키를 입력하세요", text: $tempAPIKey)
-                    .textFieldStyle(.roundedBorder)
-                Button("저장") {
-                    claudeService.setAPIKey(tempAPIKey)
-                    tempAPIKey = ""
-                }
-                Button("취소", role: .cancel) {
-                    tempAPIKey = ""
-                }
-            } message: {
-                Text("Claude API를 사용하려면 API 키가 필요합니다.\nAnthropic 웹사이트에서 발급받으실 수 있습니다.")
-            }
             .alert("오류", isPresented: $showError) {
                 Button("확인") {
                     showError = false
@@ -91,7 +70,7 @@ struct SummaryConfigView: View {
                 }
             }
             .onAppear {
-                tempAPIKey = claudeService.apiKey
+                setupClaudeAPI()
             }
         }
     }
@@ -112,43 +91,6 @@ struct SummaryConfigView: View {
                 infoRow(icon: "textformat.123", title: "단어 수", value: "\(processedDocument.wordCount)개")
                 infoRow(icon: "character.textbox", title: "문자 수", value: "\(processedDocument.characterCount)자")
                 infoRow(icon: "clock", title: "처리 시간", value: formatDate(processedDocument.processedAt))
-            }
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
-        }
-    }
-    
-    // MARK: - API Key Section
-    private var apiKeySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "key.fill")
-                    .foregroundColor(claudeService.isConfigured ? .green : .orange)
-                Text("API 설정")
-                    .font(.headline)
-                Spacer()
-            }
-            
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(claudeService.isConfigured ? "API 키 설정됨" : "API 키 필요")
-                        .font(.subheadline)
-                        .foregroundColor(claudeService.isConfigured ? .green : .orange)
-                    
-                    Text(claudeService.isConfigured ? "Claude API 사용 준비 완료" : "요약 생성을 위해 API 키를 설정하세요")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                Button(claudeService.isConfigured ? "변경" : "설정") {
-                    tempAPIKey = claudeService.apiKey
-                    showAPIKeyAlert = true
-                }
-                .font(.subheadline)
-                .foregroundColor(.blue)
             }
             .padding()
             .background(Color(.systemGray6))
@@ -329,54 +271,57 @@ struct SummaryConfigView: View {
         }
     }
     
-    // MARK: - Token Estimation Section
-    private var tokenEstimationSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "speedometer")
-                    .foregroundColor(.orange)
-                Text("예상 사용량")
-                    .font(.headline)
-                Spacer()
-            }
-            
-            VStack(spacing: 8) {
-                infoRow(icon: "arrow.up.circle", title: "입력 토큰", value: "약 \(estimatedInputTokens)개")
-                infoRow(icon: "arrow.down.circle", title: "출력 토큰", value: "약 \(estimatedOutputTokens)개")
-                infoRow(icon: "dollarsign.circle", title: "예상 비용", value: "약 $\(String(format: "%.4f", estimatedCost))")
-            }
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
-        }
-    }
-    
     // MARK: - Generate Button
     private var generateButton: some View {
-        Button(action: {
-            generateSummary()
-        }) {
-            HStack {
-                if isGeneratingSummary {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                        .foregroundColor(.white)
-                } else {
-                    Image(systemName: "wand.and.stars")
+        VStack(spacing: 16) {
+            Button(action: {
+                generateSummary()
+            }) {
+                HStack {
+                    if isGeneratingSummary {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .foregroundColor(.white)
+                    } else {
+                        Image(systemName: "wand.and.stars")
+                    }
+                    Text(isGeneratingSummary ? "카드뉴스 생성 중..." : "카드뉴스 생성")
                 }
-                Text(isGeneratingSummary ? "생성 중..." : "카드뉴스 생성")
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(isGeneratingSummary ? Color.gray : Color.blue)
+                .cornerRadius(12)
             }
-            .font(.headline)
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(canGenerateSummary ? Color.blue : Color.gray)
-            .cornerRadius(12)
+            .disabled(isGeneratingSummary)
+            
+            // 생성 진행 중일 때 설명 텍스트
+            if isGeneratingSummary {
+                VStack(spacing: 8) {
+                    Text("AI가 문서를 분석하여 카드뉴스를 생성하고 있습니다")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    Text("잠시만 기다려주세요...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal)
+            }
         }
-        .disabled(!canGenerateSummary || isGeneratingSummary)
     }
     
     // MARK: - Helper Methods
+    
+    private func setupClaudeAPI() {
+        // 개발자가 미리 설정한 API 키 사용
+        // 실제 배포 시에는 환경변수나 안전한 방법으로 API 키를 관리
+        let developmentAPIKey = "YOUR_CLAUDE_API_KEY_HERE" // 개발자가 여기에 API 키 설정
+        claudeService.setAPIKey(developmentAPIKey)
+        print("🔍 [SummaryConfigView] Claude API 자동 설정 완료")
+    }
     
     private func infoRow(icon: String, title: String, value: String) -> some View {
         HStack {
@@ -403,27 +348,7 @@ struct SummaryConfigView: View {
         return formatter.string(from: date)
     }
     
-    private var estimatedInputTokens: Int {
-        return claudeService.estimateTokens(for: processedDocument.content) + 500 // 프롬프트 오버헤드
-    }
-    
-    private var estimatedOutputTokens: Int {
-        return summaryConfig.cardCount.rawValue * 200 // 카드당 약 200토큰
-    }
-    
-    private var estimatedCost: Double {
-        let inputCost = Double(estimatedInputTokens) * 0.000003 // Claude 3.5 Sonnet 입력 비용
-        let outputCost = Double(estimatedOutputTokens) * 0.000015 // Claude 3.5 Sonnet 출력 비용
-        return inputCost + outputCost
-    }
-    
-    private var canGenerateSummary: Bool {
-        return claudeService.isConfigured && !isGeneratingSummary
-    }
-    
     private func generateSummary() {
-        guard canGenerateSummary else { return }
-        
         print("🔍 [SummaryConfigView] 카드뉴스 생성 시작")
         isGeneratingSummary = true
         
@@ -454,7 +379,7 @@ struct SummaryConfigView: View {
 }
 
 #Preview {
-    // ✅ 수정된 Preview - DocumentInfo 생성자에 맞춤
+    // 수정된 Preview - DocumentInfo 생성자에 맞춤
     let sampleDocumentInfo = DocumentInfo(
         fileName: "샘플문서.pdf",
         fileSize: 1024000,
