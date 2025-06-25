@@ -277,7 +277,7 @@ class FileUploadViewModel: ObservableObject {
         // TODO: 요약 설정 화면으로 네비게이션
     }
     
-    // 🔧 수정된 텍스트 직접 입력 처리 함수
+    // 🔧 완전히 새로운 텍스트 직접 입력 처리 함수
     func handleTextInput(_ text: String) {
         print("🔍 [DEBUG] 텍스트 직접 입력 시작: \(text.count)자")
         
@@ -286,15 +286,14 @@ class FileUploadViewModel: ObservableObject {
             return
         }
         
-        // Task를 사용하여 비동기 처리
-        Task { @MainActor in
+        // 🔧 즉시 동기적으로 처리
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
             print("🔍 [DEBUG] 텍스트 처리 시작...")
             
             // 먼저 텍스트 입력 모달 닫기
-            showTextInput = false
-            
-            // 짧은 지연 후 상태 업데이트 (UI 업데이트 순서 보장)
-            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1초
+            self.showTextInput = false
             
             // 가짜 DocumentInfo 생성
             let documentInfo = DocumentInfo(
@@ -307,26 +306,31 @@ class FileUploadViewModel: ObservableObject {
             // ProcessedDocument 생성
             let processed = ProcessedDocument(originalDocument: documentInfo, content: text)
             
-            // 결과 저장
-            processedDocument = processed
+            // 🔧 즉시 상태 업데이트
+            self.processedDocument = processed
             
-            // 미리보기 생성 (FileProcessingService 사용)
-            contentPreview = fileProcessingService.generatePreview(from: processed.content, maxLength: 300)
-            print("🔍 [DEBUG] 생성된 미리보기: \(contentPreview)")
+            // 미리보기 생성
+            self.contentPreview = self.fileProcessingService.generatePreview(from: processed.content, maxLength: 300)
+            print("🔍 [DEBUG] 생성된 미리보기: \(self.contentPreview)")
             
             // 파일 선택 상태 설정
-            fileName = "직접 입력한 텍스트"
-            fileSize = "\(text.count)자"
-            fileType = "텍스트"
-            isFileSelected = true
-            isProcessed = true
+            self.fileName = "직접 입력한 텍스트"
+            self.fileSize = "\(text.count)자"
+            self.fileType = "텍스트"
+            self.isFileSelected = true
+            self.isProcessed = true
+            self.isProcessing = false // 🔧 명시적으로 false 설정
             
             print("🎉 [DEBUG] 텍스트 입력 처리 완료!")
             print("🔍 [DEBUG] - 단어 수: \(processed.wordCount)")
             print("🔍 [DEBUG] - 문자 수: \(processed.characterCount)")
-            print("🔍 [DEBUG] - 미리보기 길이: \(contentPreview.count)자")
-            print("🔍 [DEBUG] - isFileSelected: \(isFileSelected)")
-            print("🔍 [DEBUG] - isProcessed: \(isProcessed)")
+            print("🔍 [DEBUG] - 미리보기 길이: \(self.contentPreview.count)자")
+            print("🔍 [DEBUG] - isFileSelected: \(self.isFileSelected)")
+            print("🔍 [DEBUG] - isProcessed: \(self.isProcessed)")
+            print("🔍 [DEBUG] - isProcessing: \(self.isProcessing)")
+            
+            // 🔧 강제 UI 업데이트
+            self.objectWillChange.send()
         }
     }
     
