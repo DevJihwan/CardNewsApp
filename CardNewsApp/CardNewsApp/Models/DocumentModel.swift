@@ -2,48 +2,36 @@ import Foundation
 
 // 업로드된 원본 문서 정보
 struct DocumentInfo {
-    let id: UUID
     let fileName: String
+    let fileSize: Int
     let fileType: String
-    let fileSize: Int64
-    let filePath: URL
     let uploadedAt: Date
     
-    init(fileName: String, fileType: String, fileSize: Int64, filePath: URL) {
-        self.id = UUID()
+    init(fileName: String, fileSize: Int, fileType: String) {
         self.fileName = fileName
-        self.fileType = fileType
         self.fileSize = fileSize
-        self.filePath = filePath
+        self.fileType = fileType
         self.uploadedAt = Date()
     }
 }
 
 // 처리된 문서 내용
 struct ProcessedDocument {
-    let id: UUID
+    let id: String
     let originalDocument: DocumentInfo
     let content: String
     let wordCount: Int
     let characterCount: Int
     let processedAt: Date
-    let preview: String
     
     init(originalDocument: DocumentInfo, content: String) {
-        self.id = UUID()
+        self.id = UUID().uuidString
         self.originalDocument = originalDocument
         self.content = content
         self.wordCount = content.components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }.count
         self.characterCount = content.count
         self.processedAt = Date()
-        
-        // 미리보기 텍스트 생성 (처음 200자)
-        if content.count > 200 {
-            self.preview = String(content.prefix(200)) + "..."
-        } else {
-            self.preview = content
-        }
     }
 }
 
@@ -51,7 +39,8 @@ struct ProcessedDocument {
 struct SummaryConfig {
     let cardCount: CardCount
     let outputStyle: OutputStyle
-    let language: SupportedLanguage
+    let language: SummaryLanguage
+    let tone: SummaryTone
     
     enum CardCount: Int, CaseIterable {
         case four = 4
@@ -59,17 +48,10 @@ struct SummaryConfig {
         case eight = 8
         
         var displayName: String {
-            return "\(self.rawValue)컷"
-        }
-        
-        var description: String {
             switch self {
-            case .four:
-                return "핵심 내용 요약"
-            case .six:
-                return "표준 길이 요약"
-            case .eight:
-                return "상세 길이 요약"
+            case .four: return "4컷"
+            case .six: return "6컷"
+            case .eight: return "8컷"
             }
         }
     }
@@ -77,87 +59,52 @@ struct SummaryConfig {
     enum OutputStyle: String, CaseIterable {
         case webtoon = "webtoon"
         case text = "text"
-        case infographic = "infographic"
+        case image = "image"
         
         var displayName: String {
             switch self {
-            case .webtoon:
-                return "웹툰 형식"
-            case .text:
-                return "텍스트 형식"
-            case .infographic:
-                return "인포그래픽 형식"
+            case .webtoon: return "웹툰 스타일"
+            case .text: return "텍스트 위주"
+            case .image: return "이미지 위주"
             }
         }
         
         var description: String {
             switch self {
-            case .webtoon:
-                return "말풍선과 캐릭터를 활용한 스토리텔링"
-            case .text:
-                return "깔끔한 텍스트 기반 카드"
-            case .infographic:
-                return "시각적 요소가 포함된 정보 그래픽"
-            }
-        }
-        
-        var icon: String {
-            switch self {
-            case .webtoon:
-                return "person.2.badge.gearshape"
-            case .text:
-                return "text.alignleft"
-            case .infographic:
-                return "chart.bar.fill"
+            case .webtoon: return "대화체와 감정 표현이 풍부한 웹툰 형태"
+            case .text: return "핵심 내용을 간결하게 정리한 텍스트"
+            case .image: return "시각적 요소와 키워드 중심의 구성"
             }
         }
     }
     
-    enum SupportedLanguage: String, CaseIterable {
+    enum SummaryLanguage: String, CaseIterable {
         case korean = "ko"
         case english = "en"
+        case japanese = "ja"
         
         var displayName: String {
             switch self {
-            case .korean:
-                return "한국어"
-            case .english:
-                return "English"
+            case .korean: return "한국어"
+            case .english: return "English"
+            case .japanese: return "日本語"
             }
         }
     }
-}
-
-// 생성된 카드뉴스
-struct CardNews {
-    let id: UUID
-    let originalDocument: DocumentInfo
-    let config: SummaryConfig
-    let cards: [Card]
-    let createdAt: Date
     
-    init(originalDocument: DocumentInfo, config: SummaryConfig, cards: [Card]) {
-        self.id = UUID()
-        self.originalDocument = originalDocument
-        self.config = config
-        self.cards = cards
-        self.createdAt = Date()
-    }
-}
-
-// 개별 카드
-struct Card {
-    let id: UUID
-    let sequence: Int
-    let title: String
-    let content: String
-    let imageData: Data? // 이미지나 인포그래픽용
-    
-    init(sequence: Int, title: String, content: String, imageData: Data? = nil) {
-        self.id = UUID()
-        self.sequence = sequence
-        self.title = title
-        self.content = content
-        self.imageData = imageData
+    enum SummaryTone: String, CaseIterable {
+        case professional = "professional"
+        case casual = "casual"
+        case academic = "academic"
+        case friendly = "friendly"
+        
+        var displayName: String {
+            switch self {
+            case .professional: return "전문적"
+            case .casual: return "캐주얼"
+            case .academic: return "학술적"
+            case .friendly: return "친근한"
+            }
+        }
     }
 }
