@@ -277,41 +277,57 @@ class FileUploadViewModel: ObservableObject {
         // TODO: 요약 설정 화면으로 네비게이션
     }
     
-    // 텍스트 직접 입력 처리
+    // 🔧 수정된 텍스트 직접 입력 처리 함수
     func handleTextInput(_ text: String) {
-        print("🔍 [DEBUG] 텍스트 직접 입력됨: \(text.count)자")
+        print("🔍 [DEBUG] 텍스트 직접 입력 시작: \(text.count)자")
         
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             showErrorMessage("텍스트를 입력해주세요.")
             return
         }
         
-        // 가짜 DocumentInfo 생성
-        let documentInfo = DocumentInfo(
-            fileName: "직접입력_텍스트.txt",
-            fileType: "TXT",
-            fileSize: Int64(text.count),
-            filePath: URL(string: "file://localhost/temp/text")!
-        )
-        
-        // ProcessedDocument 생성
-        let processed = ProcessedDocument(originalDocument: documentInfo, content: text)
-        
-        // 결과 저장
-        processedDocument = processed
-        contentPreview = fileProcessingService.generatePreview(from: processed.content, maxLength: 300)
-        isProcessed = true
-        
-        // 파일 선택 상태 설정
-        fileName = "직접 입력한 텍스트"
-        fileSize = "\(text.count)자"
-        fileType = "텍스트"
-        isFileSelected = true
-        
-        // 모달 닫기
-        showTextInput = false
-        
-        print("🎉 [DEBUG] 텍스트 입력 처리 완료: \(processed.wordCount)단어, \(processed.characterCount)자")
+        // Task를 사용하여 비동기 처리
+        Task { @MainActor in
+            print("🔍 [DEBUG] 텍스트 처리 시작...")
+            
+            // 먼저 텍스트 입력 모달 닫기
+            showTextInput = false
+            
+            // 짧은 지연 후 상태 업데이트 (UI 업데이트 순서 보장)
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1초
+            
+            // 가짜 DocumentInfo 생성
+            let documentInfo = DocumentInfo(
+                fileName: "직접입력_텍스트.txt",
+                fileType: "TXT",
+                fileSize: Int64(text.count),
+                filePath: URL(string: "file://localhost/temp/text")!
+            )
+            
+            // ProcessedDocument 생성
+            let processed = ProcessedDocument(originalDocument: documentInfo, content: text)
+            
+            // 결과 저장
+            processedDocument = processed
+            
+            // 미리보기 생성 (FileProcessingService 사용)
+            contentPreview = fileProcessingService.generatePreview(from: processed.content, maxLength: 300)
+            print("🔍 [DEBUG] 생성된 미리보기: \(contentPreview)")
+            
+            // 파일 선택 상태 설정
+            fileName = "직접 입력한 텍스트"
+            fileSize = "\(text.count)자"
+            fileType = "텍스트"
+            isFileSelected = true
+            isProcessed = true
+            
+            print("🎉 [DEBUG] 텍스트 입력 처리 완료!")
+            print("🔍 [DEBUG] - 단어 수: \(processed.wordCount)")
+            print("🔍 [DEBUG] - 문자 수: \(processed.characterCount)")
+            print("🔍 [DEBUG] - 미리보기 길이: \(contentPreview.count)자")
+            print("🔍 [DEBUG] - isFileSelected: \(isFileSelected)")
+            print("🔍 [DEBUG] - isProcessed: \(isProcessed)")
+        }
     }
     
     // 파일 다시 처리
