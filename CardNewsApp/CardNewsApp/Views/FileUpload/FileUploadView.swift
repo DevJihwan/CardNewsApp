@@ -15,6 +15,7 @@ struct FileUploadView: View {
         NavigationStack {
             VStack(spacing: 24) {
                 // 상단 제목 영역
+                // 동기화 테스트
                 headerSection
                 
                 // 파일 업로드 영역
