@@ -6,7 +6,7 @@ struct FileUploadView: View {
     @State private var shouldStayOpen = true
     @State private var preventDismiss = true
     @State private var showingFilePicker = false
-    @State private var hasAppeared = false // 🔧 뷰 초기화 추적
+    @State private var hasAppeared = false
     
     let preselectedFile: URL?
     
@@ -61,15 +61,19 @@ struct FileUploadView: View {
                     }
                 }
             }
-            // 🔧 DocumentPicker를 sheet로 변경하여 안정성 향상
             .sheet(isPresented: $showingFilePicker) {
-                // 🔧 완료 시 콜백 처리
                 DocumentPickerWrapper { url in
                     handleFileSelection(url)
                     showingFilePicker = false
                 } onCancel: {
                     print("🔍 [FileUploadView] 파일 선택 취소됨")
                     showingFilePicker = false
+                }
+            }
+            // ✅ 요약 설정 화면 네비게이션 추가
+            .sheet(isPresented: $viewModel.showSummaryConfig) {
+                if let processedDocument = viewModel.processedDocument {
+                    SummaryConfigView(processedDocument: processedDocument)
                 }
             }
             .alert("오류", isPresented: $viewModel.showError) {
@@ -80,7 +84,6 @@ struct FileUploadView: View {
                 Text(viewModel.errorMessage ?? "알 수 없는 오류가 발생했습니다.")
             }
             .onAppear {
-                // 🔧 중복 실행 방지
                 guard !hasAppeared else { return }
                 hasAppeared = true
                 
@@ -88,7 +91,6 @@ struct FileUploadView: View {
                 preventDismiss = true
                 print("🔍 [FileUploadView] 뷰 나타남 - 모달 보호 활성화")
                 
-                // 🔧 미리 선택된 파일이 있는 경우 약간의 지연 후 처리
                 if let file = preselectedFile {
                     print("🔍 [FileUploadView] 미리 선택된 파일 로드: \(file.lastPathComponent)")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -118,11 +120,17 @@ struct FileUploadView: View {
                     print("🎉 [FileUploadView] 파일 처리 완료 - UI 업데이트됨")
                 }
             }
+            .onChange(of: viewModel.showSummaryConfig) { _, newValue in
+                print("🔍 [FileUploadView] showSummaryConfig 변경: \(newValue)")
+                if newValue {
+                    print("🎯 [FileUploadView] 요약 설정 화면 열림")
+                }
+            }
         }
         .interactiveDismissDisabled(preventDismiss)
     }
     
-    // 🔧 안전한 파일 선택 처리 함수 - 개선된 버전
+    // 안전한 파일 선택 처리 함수
     private func handleFileSelection(_ url: URL) {
         print("🔍 [FileUploadView] 파일 선택 처리 시작")
         
@@ -168,7 +176,6 @@ struct FileUploadView: View {
             // 파일 선택 버튼
             Button(action: {
                 print("🔍 [FileUploadView] 파일 선택 버튼 클릭")
-                // 🔧 약간의 지연을 두어 UI 안정성 향상
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     showingFilePicker = true
                 }
@@ -418,7 +425,7 @@ struct FileUploadView: View {
     }
 }
 
-// 🔧 개선된 DocumentPicker 래퍼 - sheet용
+// DocumentPicker 래퍼
 struct DocumentPickerWrapper: View {
     let onFileSelected: (URL) -> Void
     let onCancel: () -> Void
@@ -439,14 +446,14 @@ struct DocumentPickerWrapper: View {
     }
 }
 
-// 🔧 안정성이 개선된 DocumentPicker
+// 안정성이 개선된 DocumentPicker
 struct StableDocumentPicker: UIViewControllerRepresentable {
     let onFileSelected: (URL) -> Void
     
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         let picker = UIDocumentPickerViewController(
             forOpeningContentTypes: [.pdf, .data],
-            asCopy: true // 🔧 파일을 앱으로 복사하여 안정성 향상
+            asCopy: true
         )
         
         picker.delegate = context.coordinator
@@ -477,7 +484,6 @@ struct StableDocumentPicker: UIViewControllerRepresentable {
             
             print("🔍 [StableDocumentPicker] 파일 선택됨: \(url.lastPathComponent)")
             
-            // 🔧 메인 스레드에서 안전하게 콜백 실행
             DispatchQueue.main.async {
                 self.parent.onFileSelected(url)
             }
