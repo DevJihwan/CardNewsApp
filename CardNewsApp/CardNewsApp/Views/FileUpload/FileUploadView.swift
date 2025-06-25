@@ -52,6 +52,7 @@ struct FileUploadView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("취소") {
+                        print("🔍 [FileUploadView] 사용자가 의도적으로 취소 버튼 클릭")
                         shouldStayOpen = false
                         preventDismiss = false
                         dismiss()
@@ -62,10 +63,14 @@ struct FileUploadView: View {
                 DocumentPicker { url in
                     print("🔍 [FileUploadView] 파일 선택 콜백 받음: \(url.lastPathComponent)")
                     
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        viewModel.handleFileSelection(url)
+                    // 🔧 파일 선택 처리 로직 수정
+                    viewModel.handleFileSelection(url)
+                    print("🔍 [FileUploadView] 파일 선택 처리 완료")
+                    
+                    // 🔧 DocumentPicker 모달만 닫기 (메인 모달은 유지)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         viewModel.showFilePicker = false
-                        print("🔍 [FileUploadView] 파일 선택 처리 완료")
+                        print("🔍 [FileUploadView] DocumentPicker 모달 닫기")
                     }
                 }
             }
@@ -86,8 +91,20 @@ struct FileUploadView: View {
                     viewModel.handleFileSelection(file)
                 }
             }
+            .onDisappear {
+                if shouldStayOpen && preventDismiss {
+                    print("⚠️ [FileUploadView] 예상치 못한 모달 닫힘 감지!")
+                }
+            }
             .onChange(of: viewModel.isFileSelected) { _, newValue in
                 print("🔍 [FileUploadView] isFileSelected 변경: \(newValue)")
+                
+                // 🔧 파일 선택 후 모달 보호 강화
+                if newValue {
+                    shouldStayOpen = true
+                    preventDismiss = true
+                    print("🔧 [FileUploadView] 파일 선택 완료 - 모달 보호 강화")
+                }
             }
             .onChange(of: viewModel.isProcessed) { _, newValue in
                 print("🔍 [FileUploadView] isProcessed 변경: \(newValue)")
@@ -97,6 +114,12 @@ struct FileUploadView: View {
             }
             .onChange(of: viewModel.contentPreview) { _, newValue in
                 print("🔍 [FileUploadView] contentPreview 변경: \(newValue.count)자")
+            }
+            .onChange(of: viewModel.showFilePicker) { _, newValue in
+                print("🔍 [FileUploadView] showFilePicker 변경: \(newValue)")
+                if !newValue {
+                    print("🔍 [FileUploadView] DocumentPicker 모달 닫힘")
+                }
             }
         }
         .interactiveDismissDisabled(preventDismiss)
@@ -131,6 +154,7 @@ struct FileUploadView: View {
         VStack(spacing: 16) {
             // 파일 선택 버튼
             Button(action: {
+                print("🔍 [FileUploadView] 파일 선택 버튼 클릭")
                 viewModel.presentFilePicker()
             }) {
                 VStack(spacing: 12) {
