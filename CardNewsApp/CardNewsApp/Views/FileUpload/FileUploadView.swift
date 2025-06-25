@@ -69,15 +69,6 @@ struct FileUploadView: View {
                     }
                 }
             }
-            .sheet(isPresented: $viewModel.showTextInput) {
-                TextInputView { text in
-                    print("🔍 [FileUploadView] 텍스트 입력 받음: \(text.count)자")
-                    preventDismiss = true
-                    viewModel.handleTextInput(text)
-                    print("🔍 [FileUploadView] 텍스트 처리 완료 후 상태 확인")
-                }
-                .interactiveDismissDisabled(preventDismiss)
-            }
             .alert("오류", isPresented: $viewModel.showError) {
                 Button("확인") {
                     viewModel.showError = false
@@ -123,7 +114,7 @@ struct FileUploadView: View {
                 .fontWeight(.semibold)
             
             if !viewModel.isProcessed {
-                Text("PDF 파일을 업로드하거나 텍스트를 직접 입력하여\n카드뉴스로 변환할 수 있습니다")
+                Text("PDF 또는 Word 파일을 업로드하여\n카드뉴스로 변환할 수 있습니다")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -151,7 +142,7 @@ struct FileUploadView: View {
                         .font(.headline)
                     
                     if !viewModel.isFileSelected {
-                        Text("PDF, DOCX, DOC 파일 (최대 10MB)")
+                        Text("PDF, DOCX 파일 (최대 10MB)")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -168,46 +159,6 @@ struct FileUploadView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .disabled(viewModel.isProcessing)
-            
-            // OR 구분선
-            HStack {
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(.gray.opacity(0.3))
-                Text("또는")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(.gray.opacity(0.3))
-            }
-            
-            // 텍스트 직접 입력 버튼
-            Button(action: {
-                print("🔍 [FileUploadView] 텍스트 직접 입력 버튼 클릭")
-                viewModel.showTextInput = true
-            }) {
-                VStack(spacing: 8) {
-                    Image(systemName: "text.cursor")
-                        .font(.system(size: 24))
-                        .foregroundColor(.green)
-                    
-                    Text("텍스트 직접 입력")
-                        .font(.subheadline)
-                        .foregroundColor(.green)
-                    
-                    Text("(파일 업로드 문제 해결용)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Color.green, style: StrokeStyle(lineWidth: 1))
-                )
-            }
-            .buttonStyle(PlainButtonStyle())
             
             // 로딩 인디케이터
             if viewModel.isLoading {
