@@ -14,33 +14,37 @@ struct FileUploadView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                // 상단 제목 영역
-                headerSection
-                
-                // 파일 업로드 영역
-                uploadSection
-                
-                // 🔧 강제 디버깅 정보 표시
-                debugInfoSection
-                
-                // 🔧 선택된 파일 정보 표시 - 조건 제거
-                fileInfoSection
-                
-                // 파일 처리 진행 상태
-                if viewModel.isProcessing {
-                    processingSection
+            // 🔧 전체를 ScrollView로 감싸기
+            ScrollView {
+                VStack(spacing: 24) {
+                    // 상단 제목 영역
+                    headerSection
+                    
+                    // 파일 업로드 영역
+                    uploadSection
+                    
+                    // 🔧 강제 디버깅 정보 표시
+                    debugInfoSection
+                    
+                    // 🔧 선택된 파일 정보 표시 - 조건 제거
+                    fileInfoSection
+                    
+                    // 파일 처리 진행 상태
+                    if viewModel.isProcessing {
+                        processingSection
+                    }
+                    
+                    // 🔧 처리된 내용 미리보기 - 조건 완전 제거
+                    contentPreviewSection
+                    
+                    // 🔧 하단 버튼 영역 - 조건 완전 제거 (Spacer 제거)
+                    bottomButtons
+                    
+                    // 🔧 추가 여백으로 스크롤 공간 확보
+                    Color.clear.frame(height: 50)
                 }
-                
-                // 🔧 처리된 내용 미리보기 - 조건 완전 제거
-                contentPreviewSection
-                
-                Spacer()
-                
-                // 🔧 하단 버튼 영역 - 조건 완전 제거
-                bottomButtons
+                .padding()
             }
-            .padding()
             .navigationTitle("파일 업로드")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -336,7 +340,7 @@ struct FileUploadView: View {
             HStack {
                 Image(systemName: "eye")
                     .foregroundColor(.green)
-                Text("내용 미리보기")
+                Text("📋 내용 미리보기 (스크롤 테스트)")
                     .font(.headline)
                 Spacer()
                 
@@ -350,50 +354,55 @@ struct FileUploadView: View {
                 }
             }
             
+            // 🔧 ScrollView 높이 고정으로 스크롤 테스트
             ScrollView {
                 if viewModel.contentPreview.isEmpty {
-                    Text("내용을 불러오는 중...")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack {
+                        Text("⚠️ 내용을 불러오는 중...")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                        Text("contentPreview.count: \(viewModel.contentPreview.count)")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    Text(viewModel.contentPreview)
+                    Text("✅ \(viewModel.contentPreview)")
                         .font(.body)
-                        .lineLimit(10)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .foregroundColor(.primary)
                 }
             }
-            .frame(maxHeight: 150)
+            .frame(height: 120) // 🔧 고정 높이
             .padding()
             .background(Color(.systemGray6))
             .cornerRadius(8)
             
             // 디버깅 정보 추가
             VStack(alignment: .leading, spacing: 4) {
-                Text("디버깅 정보:")
+                Text("🔧 디버깅 정보:")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
                 if let doc = viewModel.processedDocument {
-                    Text("원본 텍스트 길이: \(doc.content.count)자")
+                    Text("✅ 원본 텍스트 길이: \(doc.content.count)자")
                         .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("현재 상태: isProcessed=\(viewModel.isProcessed)")
+                        .foregroundColor(.green)
+                    Text("✅ 현재 상태: isProcessed=\(viewModel.isProcessed)")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.green)
                 } else {
-                    Text("processedDocument가 nil입니다")
+                    Text("❌ processedDocument가 nil입니다")
                         .font(.caption)
                         .foregroundColor(.red)
                 }
                 
                 Text("미리보기 길이: \(viewModel.contentPreview.count)자")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(viewModel.contentPreview.isEmpty ? .red : .green)
                 Text("미리보기 isEmpty: \(viewModel.contentPreview.isEmpty)")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(viewModel.contentPreview.isEmpty ? .red : .green)
             }
             .padding(.top, 8)
         }
@@ -421,6 +430,10 @@ struct FileUploadView: View {
     // 🔧 Bottom Buttons - 조건 완전 제거하고 항상 표시
     private var bottomButtons: some View {
         VStack(spacing: 12) {
+            Text("🔧 하단 버튼 영역 (스크롤 테스트)")
+                .font(.headline)
+                .foregroundColor(.purple)
+            
             // 🔧 항상 버튼 표시
             if viewModel.isFileSelected {
                 // 다음 단계 버튼
@@ -428,7 +441,7 @@ struct FileUploadView: View {
                     viewModel.proceedToNextStep()
                 }) {
                     HStack {
-                        Text(viewModel.isProcessed ? "요약 설정" : "파일 처리")
+                        Text(viewModel.isProcessed ? "✅ 요약 설정" : "⏳ 파일 처리")
                         Image(systemName: "arrow.right")
                     }
                     .font(.headline)
@@ -445,7 +458,7 @@ struct FileUploadView: View {
                     Button(action: {
                         viewModel.clearSelectedFile()
                     }) {
-                        Text("다른 파일 선택")
+                        Text("🔄 다른 파일 선택")
                             .font(.subheadline)
                             .foregroundColor(.blue)
                     }
@@ -454,13 +467,13 @@ struct FileUploadView: View {
                     Button(action: {
                         viewModel.reprocessContent()
                     }) {
-                        Text("다시 처리")
+                        Text("🛠️ 다시 처리")
                             .font(.subheadline)
                             .foregroundColor(.orange)
                     }
                 }
             } else {
-                Text("파일을 선택하거나 텍스트를 입력해주세요")
+                Text("📂 파일을 선택하거나 텍스트를 입력해주세요")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -476,6 +489,9 @@ struct FileUploadView: View {
             }
             .font(.caption)
             .foregroundColor(.red)
+            .padding()
+            .background(Color.red.opacity(0.1))
+            .cornerRadius(8)
         }
     }
     
