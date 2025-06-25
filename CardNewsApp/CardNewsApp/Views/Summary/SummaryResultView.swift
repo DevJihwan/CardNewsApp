@@ -369,6 +369,13 @@ extension Color {
         )
     ]
     
+    // ✅ 수정된 Preview - DocumentInfo 생성자에 맞춤
+    let sampleDocumentInfo = DocumentInfo(
+        fileName: "샘플문서.pdf",
+        fileSize: 1024000,
+        fileType: "PDF"
+    )
+    
     let sampleResult = SummaryResult(
         id: UUID().uuidString,
         config: SummaryConfig(
@@ -377,12 +384,7 @@ extension Color {
             language: .korean,
             tone: .friendly
         ),
-        originalDocument: DocumentInfo(
-            fileName: "샘플문서.pdf",
-            fileSize: 1024000,
-            fileType: "PDF",
-            uploadedAt: Date()
-        ),
+        originalDocument: sampleDocumentInfo,
         cards: sampleCards,
         createdAt: Date(),
         tokensUsed: 1500
