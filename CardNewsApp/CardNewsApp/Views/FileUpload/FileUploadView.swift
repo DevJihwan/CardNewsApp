@@ -16,7 +16,7 @@ struct FileUploadView: View {
         NavigationStack {
             // 🔧 전체를 ScrollView로 감싸기
             ScrollView {
-                VStack(spacing: 24) {
+                LazyVStack(spacing: 24) {
                     // 상단 제목 영역
                     headerSection
                     
@@ -37,11 +37,14 @@ struct FileUploadView: View {
                     // 🔧 처리된 내용 미리보기 - 조건 완전 제거
                     contentPreviewSection
                     
-                    // 🔧 하단 버튼 영역 - 조건 완전 제거 (Spacer 제거)
+                    // 🔧 강제 높이 추가 섹션들
+                    forceHeightSections
+                    
+                    // 🔧 하단 버튼 영역 - 조건 완전 제거
                     bottomButtons
                     
-                    // 🔧 추가 여백으로 스크롤 공간 확보
-                    Color.clear.frame(height: 50)
+                    // 🔧 강제 하단 여백
+                    Color.clear.frame(height: 300)
                 }
                 .padding()
             }
@@ -129,6 +132,71 @@ struct FileUploadView: View {
         .interactiveDismissDisabled(preventDismiss) // 🔧 메인 모달도 보호
     }
     
+    // 🔧 강제 높이 추가 섹션들
+    private var forceHeightSections: some View {
+        VStack(spacing: 20) {
+            // 스크롤 테스트 섹션 1
+            VStack {
+                Text("🔍 스크롤 테스트 섹션 1")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.red)
+                    .cornerRadius(8)
+                
+                Text("이 섹션이 보이면 스크롤이 작동하는 것입니다.")
+                    .font(.body)
+                    .padding()
+            }
+            
+            // 스크롤 테스트 섹션 2
+            VStack {
+                Text("🔍 스크롤 테스트 섹션 2")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.orange)
+                    .cornerRadius(8)
+                
+                Text("더 아래로 스크롤해보세요.")
+                    .font(.body)
+                    .padding()
+            }
+            
+            // 스크롤 테스트 섹션 3
+            VStack {
+                Text("🔍 스크롤 테스트 섹션 3")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.green)
+                    .cornerRadius(8)
+                
+                Text("계속 스크롤해보세요.")
+                    .font(.body)
+                    .padding()
+            }
+            
+            // 스크롤 테스트 섹션 4
+            VStack {
+                Text("🔍 스크롤 테스트 섹션 4")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.blue)
+                    .cornerRadius(8)
+                
+                Text("거의 다 왔습니다.")
+                    .font(.body)
+                    .padding()
+            }
+        }
+    }
+    
     // 🔧 디버깅 정보 섹션
     private var debugInfoSection: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -187,6 +255,7 @@ struct FileUploadView: View {
                     .foregroundColor(.secondary)
             }
         }
+        .frame(height: 150) // 🔧 고정 높이
     }
     
     // MARK: - Upload Section
@@ -274,6 +343,7 @@ struct FileUploadView: View {
                 }
             }
         }
+        .frame(height: 200) // 🔧 고정 높이
     }
     
     // 🔧 File Info Section - 조건 제거하고 항상 표시
@@ -297,6 +367,7 @@ struct FileUploadView: View {
                     .foregroundColor(.secondary)
             }
         }
+        .frame(height: 120) // 🔧 고정 높이
     }
     
     // MARK: - Processing Section
@@ -340,7 +411,7 @@ struct FileUploadView: View {
             HStack {
                 Image(systemName: "eye")
                     .foregroundColor(.green)
-                Text("📋 내용 미리보기 (스크롤 테스트)")
+                Text("📋 내용 미리보기")
                     .font(.headline)
                 Spacer()
                 
@@ -373,7 +444,7 @@ struct FileUploadView: View {
                         .foregroundColor(.primary)
                 }
             }
-            .frame(height: 120) // 🔧 고정 높이
+            .frame(height: 150) // 🔧 고정 높이
             .padding()
             .background(Color(.systemGray6))
             .cornerRadius(8)
@@ -406,6 +477,7 @@ struct FileUploadView: View {
             }
             .padding(.top, 8)
         }
+        .frame(height: 300) // 🔧 고정 높이
     }
     
     // 파일 정보 행
@@ -430,9 +502,13 @@ struct FileUploadView: View {
     // 🔧 Bottom Buttons - 조건 완전 제거하고 항상 표시
     private var bottomButtons: some View {
         VStack(spacing: 12) {
-            Text("🔧 하단 버튼 영역 (스크롤 테스트)")
+            Text("🔧 하단 버튼 영역")
                 .font(.headline)
-                .foregroundColor(.purple)
+                .foregroundColor(.white)
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.purple)
+                .cornerRadius(8)
             
             // 🔧 항상 버튼 표시
             if viewModel.isFileSelected {
@@ -493,6 +569,7 @@ struct FileUploadView: View {
             .background(Color.red.opacity(0.1))
             .cornerRadius(8)
         }
+        .frame(height: 250) // 🔧 고정 높이
     }
     
     // MARK: - Helper Methods
