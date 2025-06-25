@@ -10,15 +10,15 @@ class ClaudeAPIService: ObservableObject {
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
     
-    // API 키는 나중에 설정 화면에서 입력받을 예정
-    @Published var apiKey: String = ""
+    // 개발자 설정 API 키 (배포 시에는 더 안전한 방법 사용)
+    private var apiKey: String = ""
     @Published var isConfigured: Bool = false
     
     // MARK: - Initialization
     
     init() {
         setupJSONCoders()
-        loadAPIKey()
+        loadDeveloperAPIKey()
     }
     
     private func setupJSONCoders() {
@@ -29,24 +29,49 @@ class ClaudeAPIService: ObservableObject {
         encoder.dateEncodingStrategy = .formatted(dateFormatter)
     }
     
-    // MARK: - API Key Management
+    // MARK: - API Key Management (Developer-focused)
     
+    private func loadDeveloperAPIKey() {
+        // 1순위: 환경변수에서 로드 (배포 시 권장)
+        if let envAPIKey = ProcessInfo.processInfo.environment["CLAUDE_API_KEY"], !envAPIKey.isEmpty {
+            apiKey = envAPIKey
+            isConfigured = true
+            print("🔍 [ClaudeAPIService] 환경변수에서 API 키 로드 완료")
+            return
+        }
+        
+        // 2순위: Info.plist에서 로드 (개발 시 사용)
+        if let path = Bundle.main.path(forResource: "Info", ofType: "plist"),
+           let plist = NSDictionary(contentsOfFile: path),
+           let plistAPIKey = plist["CLAUDE_API_KEY"] as? String, !plistAPIKey.isEmpty {
+            apiKey = plistAPIKey
+            isConfigured = true
+            print("🔍 [ClaudeAPIService] Info.plist에서 API 키 로드 완료")
+            return
+        }
+        
+        // 3순위: UserDefaults에서 로드 (개발자가 런타임에 설정)
+        let savedKey = UserDefaults.standard.string(forKey: "claude_api_key") ?? ""
+        if !savedKey.isEmpty {
+            apiKey = savedKey
+            isConfigured = true
+            print("🔍 [ClaudeAPIService] UserDefaults에서 API 키 로드 완료")
+            return
+        }
+        
+        print("⚠️ [ClaudeAPIService] API 키가 설정되지 않았습니다. 개발자가 설정해주세요.")
+        isConfigured = false
+    }
+    
+    // 개발자용 API 키 설정 함수 (내부적으로만 사용)
     func setAPIKey(_ key: String) {
         apiKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
         isConfigured = !apiKey.isEmpty
-        saveAPIKey()
-        print("🔍 [ClaudeAPIService] API 키 설정: \(isConfigured ? "완료" : "제거")")
-    }
-    
-    private func saveAPIKey() {
-        // 실제 앱에서는 Keychain에 저장해야 하지만, 
-        // 개발 단계에서는 UserDefaults 사용
+        
+        // UserDefaults에 저장 (개발 편의성을 위해)
         UserDefaults.standard.set(apiKey, forKey: "claude_api_key")
-    }
-    
-    private func loadAPIKey() {
-        apiKey = UserDefaults.standard.string(forKey: "claude_api_key") ?? ""
-        isConfigured = !apiKey.isEmpty
+        
+        print("🔍 [ClaudeAPIService] API 키 설정: \(isConfigured ? "완료" : "제거")")
     }
     
     // MARK: - Main Summary Generation
