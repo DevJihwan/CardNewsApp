@@ -2,8 +2,8 @@ import SwiftUI
 
 struct MainView: View {
     @State private var showFileUpload = false
-    @State private var selectedFileURL: URL? // 파일 선택 상태 유지
-    @State private var shouldReopenModal = false // 모달 재열기 플래그
+    @State private var selectedFileURL: URL?
+    @State private var isAppInitialized = false // 🔧 앱 초기화 상태 추적
     
     var body: some View {
         NavigationStack {
@@ -31,7 +31,7 @@ struct MainView: View {
                 // 파일 업로드 버튼
                 Button(action: {
                     print("🔍 [MainView] 파일 업로드 버튼 클릭")
-                    showFileUpload = true
+                    openFileUpload()
                 }) {
                     VStack(spacing: 8) {
                         Image(systemName: "plus.circle.fill")
@@ -125,18 +125,33 @@ struct MainView: View {
                         print("🔍 [MainView] FileUploadView 모달 표시")
                     }
             }
-            .onChange(of: showFileUpload) { _, newValue in
-                print("🔍 [MainView] showFileUpload 변경: \(newValue)")
-                
-                // 모달이 예상치 못하게 닫혔을 때 처리
-                if !newValue && shouldReopenModal {
-                    print("🔧 [MainView] 모달 재열기 시도")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        showFileUpload = true
-                        shouldReopenModal = false
-                    }
+            .onAppear {
+                // 🔧 앱 초기화 완료 후 일정 시간 대기
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    isAppInitialized = true
+                    print("🔍 [MainView] 앱 초기화 완료")
                 }
             }
+        }
+    }
+    
+    // 🔧 안전한 파일 업로드 모달 열기
+    private func openFileUpload() {
+        // 앱이 완전히 초기화된 후에만 모달 열기
+        guard isAppInitialized else {
+            print("⚠️ [MainView] 앱 아직 초기화 중... 잠시 후 다시 시도")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                openFileUpload()
+            }
+            return
+        }
+        
+        print("🔍 [MainView] 파일 업로드 모달 열기 시작")
+        
+        // 약간의 지연을 두어 안정성 향상
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            showFileUpload = true
+            print("🔍 [MainView] showFileUpload = true 설정 완료")
         }
     }
     
@@ -150,7 +165,7 @@ struct MainView: View {
                     .font(.headline)
                 Spacer()
                 Button("계속 처리") {
-                    showFileUpload = true
+                    openFileUpload()
                 }
                 .font(.caption)
                 .foregroundColor(.blue)
