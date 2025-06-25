@@ -63,15 +63,8 @@ struct FileUploadView: View {
                 DocumentPicker { url in
                     print("🔍 [FileUploadView] 파일 선택 콜백 받음: \(url.lastPathComponent)")
                     
-                    // 🔧 파일 선택 처리 로직 수정
-                    viewModel.handleFileSelection(url)
-                    print("🔍 [FileUploadView] 파일 선택 처리 완료")
-                    
-                    // 🔧 DocumentPicker 모달만 닫기 (메인 모달은 유지)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        viewModel.showFilePicker = false
-                        print("🔍 [FileUploadView] DocumentPicker 모달 닫기")
-                    }
+                    // 🔧 안전한 파일 선택 처리
+                    handleFileSelection(url)
                 }
             }
             .alert("오류", isPresented: $viewModel.showError) {
@@ -94,6 +87,8 @@ struct FileUploadView: View {
             .onDisappear {
                 if shouldStayOpen && preventDismiss {
                     print("⚠️ [FileUploadView] 예상치 못한 모달 닫힘 감지!")
+                } else {
+                    print("✅ [FileUploadView] 정상적인 모달 닫힘")
                 }
             }
             .onChange(of: viewModel.isFileSelected) { _, newValue in
@@ -117,12 +112,26 @@ struct FileUploadView: View {
             }
             .onChange(of: viewModel.showFilePicker) { _, newValue in
                 print("🔍 [FileUploadView] showFilePicker 변경: \(newValue)")
-                if !newValue {
-                    print("🔍 [FileUploadView] DocumentPicker 모달 닫힘")
-                }
             }
         }
         .interactiveDismissDisabled(preventDismiss)
+    }
+    
+    // 🔧 안전한 파일 선택 처리 함수
+    private func handleFileSelection(_ url: URL) {
+        print("🔍 [FileUploadView] 파일 선택 처리 시작")
+        
+        // 모달 보호 설정
+        shouldStayOpen = true
+        preventDismiss = true
+        
+        // 파일 처리
+        viewModel.handleFileSelection(url)
+        
+        // DocumentPicker 모달 닫기
+        viewModel.showFilePicker = false
+        
+        print("🔍 [FileUploadView] 파일 선택 처리 완료")
     }
     
     // MARK: - Header Section
