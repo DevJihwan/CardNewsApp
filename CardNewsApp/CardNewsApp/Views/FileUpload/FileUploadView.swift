@@ -4,6 +4,7 @@ struct FileUploadView: View {
     @StateObject private var viewModel = FileUploadViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var shouldStayOpen = true
+    @State private var preventDismiss = true // 강화된 모달 보호
     
     let preselectedFile: URL?
     
@@ -15,7 +16,6 @@ struct FileUploadView: View {
         NavigationStack {
             VStack(spacing: 24) {
                 // 상단 제목 영역
-                // 동기화 테스트
                 headerSection
                 
                 // 파일 업로드 영역
@@ -47,7 +47,9 @@ struct FileUploadView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("취소") {
+                        print("🔍 [FileUploadView] 사용자가 취소 버튼 클릭")
                         shouldStayOpen = false
+                        preventDismiss = false
                         dismiss()
                     }
                 }
@@ -66,8 +68,17 @@ struct FileUploadView: View {
             .sheet(isPresented: $viewModel.showTextInput) {
                 TextInputView { text in
                     print("🔍 [FileUploadView] 텍스트 입력 받음: \(text.count)자")
+                    print("🔍 [FileUploadView] 모달 보호 상태: preventDismiss=\(preventDismiss)")
+                    
+                    // 🔧 모달 보호 강화
+                    preventDismiss = true
+                    
+                    // 텍스트 처리
                     viewModel.handleTextInput(text)
+                    
+                    print("🔍 [FileUploadView] 텍스트 처리 완료 후 상태 확인")
                 }
+                .interactiveDismissDisabled(preventDismiss) // 🔧 스와이프로 닫기 방지
             }
             .alert("오류", isPresented: $viewModel.showError) {
                 Button("확인") {
@@ -78,6 +89,7 @@ struct FileUploadView: View {
             }
             .onAppear {
                 shouldStayOpen = true
+                preventDismiss = true
                 print("🔍 [FileUploadView] 뷰 나타남 - 모달 보호 활성화")
                 
                 if let file = preselectedFile {
@@ -86,11 +98,36 @@ struct FileUploadView: View {
                 }
             }
             .onDisappear {
-                if shouldStayOpen {
+                if shouldStayOpen && preventDismiss {
                     print("⚠️ [FileUploadView] 예상치 못한 모달 닫힘 감지!")
+                    // 🔧 모달이 의도치 않게 닫혔을 때 다시 열기 시도
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        if shouldStayOpen && preventDismiss {
+                            print("🔧 [FileUploadView] 모달 재열기 시도...")
+                            // TODO: 필요시 모달 재열기 로직 추가
+                        }
+                    }
+                }
+            }
+            // 🔧 상태 변화 모니터링 강화
+            .onChange(of: viewModel.isFileSelected) { _, newValue in
+                print("🔍 [FileUploadView] isFileSelected 변경: \(newValue)")
+            }
+            .onChange(of: viewModel.isProcessed) { _, newValue in
+                print("🔍 [FileUploadView] isProcessed 변경: \(newValue)")
+                if newValue {
+                    print("🎉 [FileUploadView] 파일 처리 완료 - UI 업데이트됨")
+                }
+            }
+            .onChange(of: viewModel.showTextInput) { _, newValue in
+                print("🔍 [FileUploadView] showTextInput 변경: \(newValue)")
+                if !newValue {
+                    // 텍스트 입력 모달이 닫혔을 때
+                    print("🔍 [FileUploadView] 텍스트 입력 모달 닫힘")
                 }
             }
         }
+        .interactiveDismissDisabled(preventDismiss) // 🔧 메인 모달도 보호
     }
     
     // MARK: - Header Section
@@ -166,6 +203,7 @@ struct FileUploadView: View {
             
             // 텍스트 직접 입력 버튼
             Button(action: {
+                print("🔍 [FileUploadView] 텍스트 직접 입력 버튼 클릭")
                 viewModel.showTextInput = true
             }) {
                 VStack(spacing: 8) {
@@ -297,6 +335,9 @@ struct FileUploadView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Text("미리보기 길이: \(viewModel.contentPreview.count)자")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("현재 상태: isProcessed=\(viewModel.isProcessed)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
