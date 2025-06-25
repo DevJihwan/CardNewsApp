@@ -35,7 +35,7 @@
 - ✅ **MainView 업데이트**: 파일 업로드 네비게이션 연동
 - ✅ **기능 테스트**: 파일 선택 및 정보 표시 완료
 
-### 6. 파일 처리 서비스 구현 ✅ **NEW!**
+### 6. 파일 처리 서비스 구현
 - ✅ **ZIPFoundation 패키지 설정**: Swift Package Manager 연동
 - ✅ **FileProcessingService.swift** - PDF/Word 파일 텍스트 추출
 - ✅ **DocumentModel.swift** - 완전한 데이터 모델 정의
@@ -44,6 +44,20 @@
 - ✅ **파일 처리 UI**: 진행률 표시, 내용 미리보기, 재처리 기능
 - ✅ **완전한 플로우**: 파일 선택 → 처리 → 미리보기 → 다음 단계
 
+### 7. 앱 최초 실행 시 모달 닫힘 문제 해결 ✅ **NEW!**
+- ✅ **문제 분석**: 앱 최초 실행 시 파일 업로드 모달이 강제로 닫히는 현상
+- ✅ **원인 파악**: SwiftUI 생명주기와 DocumentPicker 간의 상태 충돌
+- ✅ **해결 방법 적용**: 
+  - DocumentPicker를 `fullScreenCover`에서 `sheet`로 변경
+  - 앱 초기화 상태 추적 로직 추가
+  - 파일 선택 후 모달 보호 강화
+  - 안전한 지연 실행으로 안정성 향상
+- ✅ **코드 개선**: 
+  - `StableDocumentPicker` 구현 (asCopy: true 설정)
+  - `hasAppeared` 플래그로 중복 실행 방지
+  - `isAppInitialized` 상태로 안전한 모달 열기
+- ✅ **테스트 완료**: 앱 최초 실행 시 모달 안정성 확인
+
 ## 📁 현재 프로젝트 구조
 
 ```
@@ -51,20 +65,20 @@ CardNewsApp/
 ├── App/
 │   └── CardNewsApp.swift          # 앱 진입점
 ├── Models/
-│   └── DocumentModel.swift       # ✅ 새로 추가 (완전한 데이터 모델)
+│   └── DocumentModel.swift       # ✅ 완료 (완전한 데이터 모델)
 ├── Views/
-│   ├── MainView.swift            # ✅ 완료 (업데이트됨)
+│   ├── MainView.swift            # ✅ 업데이트 (안정성 개선)
 │   └── FileUpload/
-│       └── FileUploadView.swift  # ✅ 파일 처리 UI 추가
+│       └── FileUploadView.swift  # ✅ 업데이트 (모달 안정성 개선)
 ├── ViewModels/
-│   └── FileUploadViewModel.swift # ✅ 파일 처리 로직 추가
+│   └── FileUploadViewModel.swift # ✅ 완료 (파일 처리 로직)
 ├── Services/
-│   └── FileProcessingService.swift # ✅ 새로 추가 (핵심 서비스)
+│   └── FileProcessingService.swift # ✅ 완료 (핵심 서비스)
 ├── Resources/
 │   └── Assets.xcassets
 ├── Utils/
-│   └── DocumentPicker.swift      # ✅ PDF/Word 지원
-└── Persistence.swift             # ✅ Core Data 관리
+│   └── DocumentPicker.swift      # ✅ 완료 (PDF/Word 지원)
+└── Persistence.swift             # ✅ 완료 (Core Data 관리)
 ```
 
 ## 🎯 현재 상태
@@ -75,11 +89,12 @@ CardNewsApp/
 - Core Data 연동 준비
 - **파일 업로드 기능**: PDF/Word 파일 선택 및 검증
 - **파일 처리 기능**: PDF/Word 텍스트 추출 및 내용 분석
+- **모달 안정성**: 앱 최초 실행 시 문제 해결 완료
 
 ### 🔄 현재 화면
 - 앱 로고 및 타이틀 (개선된 UI)
 - **"파일 업로드" 버튼** ✅ **기능 구현 완료**
-- **파일 선택 화면**: DocumentPicker 연동
+- **파일 선택 화면**: DocumentPicker 연동 (안정성 개선)
 - **파일 정보 표시**: 파일명, 크기, 형식
 - **파일 처리 진행률**: 실시간 상태 표시
 - **내용 미리보기**: 추출된 텍스트 확인
@@ -88,7 +103,7 @@ CardNewsApp/
 
 ### 🎮 **현재 동작하는 완전한 플로우**
 1. **메인 화면 → 파일 업로드 버튼** 탭
-2. **파일 선택 화면** 모달 표시
+2. **파일 선택 화면** 모달 표시 (안정적)
 3. **"파일 선택"** 영역 탭 → iOS 파일 앱 열림
 4. **PDF/Word 파일 선택** → 파일 정보 자동 표시
 5. **파일 검증**: 10MB 제한, 지원 형식 체크
@@ -140,20 +155,37 @@ CardNewsApp/
 **문제**: "Cannot call value of non-function type 'Bool'" 오류  
 **해결**: FileUploadView에서 `viewModel.showFilePicker()` → `viewModel.presentFilePicker()` 수정
 
-### 5. ZIPFoundation 패키지 설정 오류 ✅ **NEW!**
+### 5. ZIPFoundation 패키지 설정 오류
 **문제**: "No such module 'ZipFoundation'" 오류  
 **해결**: 
 - 정확한 패키지 URL 사용: `https://github.com/weichsel/ZIPFoundation.git`
 - import 문 대소문자 수정: `import ZIPFoundation`
 - Package Dependencies 완전 재설정
 
-### 6. ProcessedDocument 중복 선언 오류 ✅ **NEW!**
+### 6. ProcessedDocument 중복 선언 오류
 **문제**: "Invalid redeclaration of 'ProcessedDocument'" 오류  
 **해결**: FileProcessingService.swift에서 중복 구조체 정의 제거, DocumentModel.swift 사용
 
-### 7. 데이터 모델 접근 오류 ✅ **NEW!**
+### 7. 데이터 모델 접근 오류
 **문제**: "Value of type 'ProcessedDocument' has no member 'fileName'" 오류  
 **해결**: `processed.fileName` → `processed.originalDocument.fileName` 구조 변경
+
+### 8. 앱 최초 실행 시 모달 강제 닫힘 문제 ✅ **NEW!**
+**문제**: 앱 최초 실행 시 파일 업로드 모달이 선택과 동시에 닫히는 현상  
+**원인**: 
+- SwiftUI 생명주기와 DocumentPicker 간의 상태 충돌
+- `fullScreenCover` 사용 시 모달 스택 관리 문제
+- 앱 초기화 중 UI 상태 불안정
+
+**해결**:
+- **DocumentPicker 방식 변경**: `fullScreenCover` → `sheet` 사용
+- **안정성 개선**: `StableDocumentPicker` 구현 (`asCopy: true` 설정)
+- **앱 초기화 추적**: `isAppInitialized` 상태로 안전한 타이밍 보장
+- **중복 실행 방지**: `hasAppeared` 플래그로 뷰 생명주기 관리
+- **지연 실행**: DispatchQueue를 활용한 안전한 모달 열기
+- **상태 보호**: 파일 선택 후 모달 유지 로직 강화
+
+**테스트 결과**: ✅ 앱 최초 실행 시에도 파일 업로드 모달이 안정적으로 유지됨
 
 ## ⚙️ 개발 환경
 
@@ -167,16 +199,17 @@ CardNewsApp/
 ## 📊 진행률
 
 ```
-전체 진행률: 60% (+25% 대폭 증가!)
+전체 진행률: 65% (+5% 안정성 개선!)
 
 1. 기획 및 설계     ████████████████████ 100%
 2. 프로젝트 설정    ████████████████████ 100%  
 3. 기본 UI         ████████████████████ 100%
 4. 파일 업로드     ████████████████████ 100% ✅
-5. 파일 처리       ████████████████████ 100% ✅ NEW!
-6. AI 요약 기능    ░░░░░░░░░░░░░░░░░░░░ 0%
-7. 구독 시스템     ░░░░░░░░░░░░░░░░░░░░ 0%
-8. 배포 준비       ░░░░░░░░░░░░░░░░░░░░ 0%
+5. 파일 처리       ████████████████████ 100% ✅
+6. 안정성 개선     ████████████████████ 100% ✅ NEW!
+7. AI 요약 기능    ░░░░░░░░░░░░░░░░░░░░ 0%
+8. 구독 시스템     ░░░░░░░░░░░░░░░░░░░░ 0%
+9. 배포 준비       ░░░░░░░░░░░░░░░░░░░░ 0%
 ```
 
 ## 🎯 다음 세션 목표
@@ -189,7 +222,7 @@ CardNewsApp/
 
 ### 사용자 플로우:
 1. **앱 실행** → 메인 화면
-2. **"파일 업로드" 버튼** 탭
+2. **"파일 업로드" 버튼** 탭 (최초 실행 시에도 안정적)
 3. **파일 선택 화면** 표시
 4. **"파일 선택" 영역** 탭
 5. **iOS 파일 앱**에서 PDF/Word 파일 선택
@@ -242,13 +275,21 @@ CardNewsApp/
 - **URL Security Scoped Resource**: 파일 접근 권한 관리
 - **UTType (Uniform Type Identifiers)**: 파일 형식 식별
 
-### 새로 학습한 파일 처리 개념들 ✅ **NEW!**
+### 새로 학습한 파일 처리 개념들
 - **PDFKit**: iOS 기본 PDF 처리 프레임워크
 - **ZIPFoundation**: ZIP 압축 파일 처리 라이브러리
 - **XML 파싱**: Word 문서 구조 분석
 - **정규표현식**: 텍스트 추출 및 정리
 - **비동기 처리**: async/await를 활용한 파일 처리
 - **진행률 추적**: 사용자 경험 개선을 위한 상태 관리
+
+### 새로 학습한 SwiftUI 안정성 개념들 ✅ **NEW!**
+- **모달 생명주기**: sheet vs fullScreenCover 차이점
+- **앱 초기화 순서**: onAppear 타이밍과 상태 관리
+- **안전한 지연 실행**: DispatchQueue.main.asyncAfter 활용
+- **뷰 중복 실행 방지**: 플래그를 통한 생명주기 관리
+- **DocumentPicker 안정성**: asCopy 설정의 중요성
+- **상태 충돌 해결**: SwiftUI와 UIKit 브리지 최적화
 
 ## 🚀 **기술적 성과**
 
@@ -258,11 +299,13 @@ CardNewsApp/
 3. **실시간 진행률**: 사용자 경험 최적화
 4. **메모리 효율적**: 대용량 파일도 안정적 처리
 5. **재처리 기능**: 실패 시 다시 시도 가능
+6. **모달 안정성**: 앱 최초 실행 시에도 완벽 동작 ✅ **NEW!**
 
 ### 다음 단계 준비 완료:
 - **추출된 텍스트**: Claude API 요약 요청 준비
 - **파일 메타데이터**: 요약 설정에 활용 가능
 - **사용자 플로우**: 매끄러운 다음 단계 전환
+- **안정적인 기반**: 모든 기본 기능이 견고하게 구축됨
 
 ---
 
