@@ -60,11 +60,19 @@ struct FileUploadView: View {
                 }
             }
             .sheet(isPresented: $viewModel.showFilePicker) {
+                // 🔧 DocumentPicker 모달이 닫힌 후 실행되는 콜백
+                print("🔍 [FileUploadView] DocumentPicker 모달 닫힘")
+            } content: {
                 DocumentPicker { url in
                     print("🔍 [FileUploadView] 파일 선택 콜백 받음: \(url.lastPathComponent)")
                     
-                    // 🔧 안전한 파일 선택 처리
+                    // 🔧 즉시 처리 (뷰 서비스 종료 전에)
                     handleFileSelection(url)
+                    
+                    // 🔧 DocumentPicker 모달 닫기
+                    DispatchQueue.main.async {
+                        viewModel.showFilePicker = false
+                    }
                 }
             }
             .alert("오류", isPresented: $viewModel.showError) {
@@ -127,9 +135,6 @@ struct FileUploadView: View {
         
         // 파일 처리
         viewModel.handleFileSelection(url)
-        
-        // DocumentPicker 모달 닫기
-        viewModel.showFilePicker = false
         
         print("🔍 [FileUploadView] 파일 선택 처리 완료")
     }
