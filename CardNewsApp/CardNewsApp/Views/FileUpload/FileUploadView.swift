@@ -21,6 +21,9 @@ struct FileUploadView: View {
                 // 파일 업로드 영역
                 uploadSection
                 
+                // 🔧 강제 디버깅 정보 표시
+                debugInfoSection
+                
                 // 선택된 파일 정보 표시
                 if viewModel.isFileSelected {
                     fileInfoSection
@@ -31,8 +34,8 @@ struct FileUploadView: View {
                     processingSection
                 }
                 
-                // 처리된 내용 미리보기
-                if viewModel.isProcessed {
+                // 🔧 처리된 내용 미리보기 - 조건 완화
+                if viewModel.isFileSelected && !viewModel.contentPreview.isEmpty {
                     contentPreviewSection
                 }
                 
@@ -100,13 +103,6 @@ struct FileUploadView: View {
             .onDisappear {
                 if shouldStayOpen && preventDismiss {
                     print("⚠️ [FileUploadView] 예상치 못한 모달 닫힘 감지!")
-                    // 🔧 모달이 의도치 않게 닫혔을 때 다시 열기 시도
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        if shouldStayOpen && preventDismiss {
-                            print("🔧 [FileUploadView] 모달 재열기 시도...")
-                            // TODO: 필요시 모달 재열기 로직 추가
-                        }
-                    }
                 }
             }
             // 🔧 상태 변화 모니터링 강화
@@ -126,8 +122,44 @@ struct FileUploadView: View {
                     print("🔍 [FileUploadView] 텍스트 입력 모달 닫힘")
                 }
             }
+            .onChange(of: viewModel.contentPreview) { _, newValue in
+                print("🔍 [FileUploadView] contentPreview 변경: \(newValue.count)자")
+            }
         }
         .interactiveDismissDisabled(preventDismiss) // 🔧 메인 모달도 보호
+    }
+    
+    // 🔧 디버깅 정보 섹션
+    private var debugInfoSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("🔍 디버깅 상태:")
+                .font(.caption)
+                .foregroundColor(.red)
+            Text("isFileSelected: \(viewModel.isFileSelected)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text("isProcessed: \(viewModel.isProcessed)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text("isProcessing: \(viewModel.isProcessing)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text("contentPreview.count: \(viewModel.contentPreview.count)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            if let doc = viewModel.processedDocument {
+                Text("processedDocument exists: wordCount=\(doc.wordCount)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                Text("processedDocument: nil")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(8)
+        .background(Color.yellow.opacity(0.2))
+        .cornerRadius(4)
     }
     
     // MARK: - Header Section
@@ -365,10 +397,11 @@ struct FileUploadView: View {
         }
     }
     
-    // MARK: - Bottom Buttons
+    // MARK: - Bottom Buttons (🔧 조건 완화)
     private var bottomButtons: some View {
         VStack(spacing: 12) {
-            if viewModel.isFileSelected && !viewModel.isProcessing {
+            // 🔧 조건을 완화하여 버튼이 더 잘 보이도록 수정
+            if viewModel.isFileSelected {
                 // 다음 단계 버튼
                 Button(action: {
                     viewModel.proceedToNextStep()
@@ -381,9 +414,10 @@ struct FileUploadView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.blue)
+                    .background(viewModel.isProcessing ? Color.gray : Color.blue)
                     .cornerRadius(12)
                 }
+                .disabled(viewModel.isProcessing)
                 
                 HStack(spacing: 16) {
                     // 다른 파일 선택 버튼
@@ -395,8 +429,8 @@ struct FileUploadView: View {
                             .foregroundColor(.blue)
                     }
                     
-                    // 재처리 버튼 (처리 완료 후에만 표시)
-                    if viewModel.isProcessed {
+                    // 🔧 재처리 버튼 - 조건 완화
+                    if viewModel.isFileSelected && !viewModel.contentPreview.isEmpty {
                         Button(action: {
                             viewModel.reprocessContent()
                         }) {
@@ -406,6 +440,20 @@ struct FileUploadView: View {
                         }
                     }
                 }
+            }
+            
+            // 🔧 강제 테스트 버튼 (디버깅용)
+            if viewModel.isFileSelected {
+                Button("🔧 강제 상태 확인") {
+                    print("🔧 [DEBUG] 강제 상태 확인:")
+                    print("  - isFileSelected: \(viewModel.isFileSelected)")
+                    print("  - isProcessed: \(viewModel.isProcessed)")
+                    print("  - isProcessing: \(viewModel.isProcessing)")
+                    print("  - contentPreview: '\(viewModel.contentPreview)'")
+                    print("  - processedDocument: \(viewModel.processedDocument != nil)")
+                }
+                .font(.caption)
+                .foregroundColor(.red)
             }
         }
     }
