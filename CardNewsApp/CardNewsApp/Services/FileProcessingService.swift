@@ -57,14 +57,14 @@ class FileProcessingService: ObservableObject {
         do {
             // 파일 크기 정보 얻기
             let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey])
-            let fileSize = Int64(resourceValues.fileSize ?? 0)
+            let fileSize = resourceValues.fileSize ?? 0 // Int 타입으로 변경
             
-            // DocumentInfo 생성
+            // DocumentInfo 생성 - 수정된 생성자 사용
             let documentInfo = DocumentInfo(
                 fileName: fileName,
-                fileType: fileExtension.uppercased(),
-                fileSize: fileSize,
-                filePath: url
+                fileSize: fileSize, // Int 타입
+                fileType: fileExtension.uppercased()
+                // filePath 매개변수 제거됨
             )
             
             let content: String
