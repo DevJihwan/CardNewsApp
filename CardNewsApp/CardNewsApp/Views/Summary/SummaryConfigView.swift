@@ -454,18 +454,16 @@ struct SummaryConfigView: View {
 }
 
 #Preview {
+    // ✅ 수정된 Preview - DocumentInfo 생성자에 맞춤
+    let sampleDocumentInfo = DocumentInfo(
+        fileName: "샘플문서.pdf",
+        fileSize: 1024000,
+        fileType: "PDF"
+    )
+    
     let sampleDocument = ProcessedDocument(
-        id: UUID().uuidString,
-        originalDocument: DocumentInfo(
-            fileName: "샘플문서.pdf",
-            fileSize: 1024000,
-            fileType: "PDF",
-            uploadedAt: Date()
-        ),
-        content: "이것은 샘플 문서의 내용입니다. 카드뉴스로 변환할 텍스트가 여기에 들어갑니다.",
-        wordCount: 150,
-        characterCount: 500,
-        processedAt: Date()
+        originalDocument: sampleDocumentInfo,
+        content: "이것은 샘플 문서의 내용입니다. 카드뉴스로 변환할 텍스트가 여기에 들어갑니다."
     )
     
     SummaryConfigView(processedDocument: sampleDocument)
