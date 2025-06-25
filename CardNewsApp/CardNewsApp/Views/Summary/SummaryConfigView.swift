@@ -28,6 +28,9 @@ struct SummaryConfigView: View {
                     // 상단 문서 정보
                     documentInfoSection
                     
+                    // API 키 상태 표시 (디버깅용)
+                    apiStatusSection
+                    
                     // 카드 수 선택
                     cardCountSection
                     
@@ -72,6 +75,38 @@ struct SummaryConfigView: View {
             .onAppear {
                 setupClaudeAPI()
             }
+        }
+    }
+    
+    // MARK: - API Status Section (디버깅용)
+    private var apiStatusSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: claudeService.isConfigured ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    .foregroundColor(claudeService.isConfigured ? .green : .red)
+                Text("API 상태")
+                    .font(.headline)
+                Spacer()
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(claudeService.isConfigured ? "✅ API 키 설정됨" : "❌ API 키 없음")
+                    .font(.subheadline)
+                    .foregroundColor(claudeService.isConfigured ? .green : .red)
+                
+                if claudeService.isConfigured {
+                    Text("Claude API 호출 준비 완료")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("API 키를 확인해주세요")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
         }
     }
     
@@ -291,10 +326,10 @@ struct SummaryConfigView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(isGeneratingSummary ? Color.gray : Color.blue)
+                .background(isGeneratingSummary || !claudeService.isConfigured ? Color.gray : Color.blue)
                 .cornerRadius(12)
             }
-            .disabled(isGeneratingSummary)
+            .disabled(isGeneratingSummary || !claudeService.isConfigured)
             
             // 생성 진행 중일 때 설명 텍스트
             if isGeneratingSummary {
@@ -316,11 +351,16 @@ struct SummaryConfigView: View {
     // MARK: - Helper Methods
     
     private func setupClaudeAPI() {
-        // 개발자가 미리 설정한 API 키 사용
-        // 실제 배포 시에는 환경변수나 안전한 방법으로 API 키를 관리
-        let developmentAPIKey = "YOUR_CLAUDE_API_KEY_HERE" // 개발자가 여기에 API 키 설정
-        claudeService.setAPIKey(developmentAPIKey)
-        print("🔍 [SummaryConfigView] Claude API 자동 설정 완료")
+        // 🚨 임시 테스트용 - 여기에 실제 API 키를 넣어보세요
+        // 형식: sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        let testAPIKey = "여기에_실제_Claude_API_키를_입력하세요"
+        
+        if testAPIKey != "여기에_실제_Claude_API_키를_입력하세요" {
+            claudeService.setAPIKey(testAPIKey)
+            print("🔍 [SummaryConfigView] 테스트 API 키로 설정 완료")
+        } else {
+            print("⚠️ [SummaryConfigView] 테스트 API 키를 설정해주세요")
+        }
     }
     
     private func infoRow(icon: String, title: String, value: String) -> some View {
