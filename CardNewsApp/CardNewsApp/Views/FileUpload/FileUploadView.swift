@@ -4,7 +4,7 @@ struct FileUploadView: View {
     @StateObject private var viewModel = FileUploadViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var shouldStayOpen = true
-    @State private var preventDismiss = true // 강화된 모달 보호
+    @State private var preventDismiss = true
     
     let preselectedFile: URL?
     
@@ -14,60 +14,44 @@ struct FileUploadView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // 🔧 스크롤 상태 표시
-                Text("📱 스크롤 테스트 - 아래로 드래그하세요!")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.red)
-                
-                // 🔧 전체를 ScrollView로 감싸기 - 스크롤 인디케이터 강제 표시
-                ScrollView(.vertical, showsIndicators: true) {
-                    LazyVStack(spacing: 24) {
-                        // 상단 제목 영역
-                        headerSection
-                        
-                        // 파일 업로드 영역
-                        uploadSection
-                        
-                        // 🔧 강제 디버깅 정보 표시
-                        debugInfoSection
-                        
-                        // 🔧 선택된 파일 정보 표시 - 조건 제거
+            ScrollView {
+                VStack(spacing: 24) {
+                    // 상단 제목 영역
+                    headerSection
+                    
+                    // 파일 업로드 영역
+                    uploadSection
+                    
+                    // 선택된 파일 정보 표시
+                    if viewModel.isFileSelected {
                         fileInfoSection
-                        
-                        // 파일 처리 진행 상태
-                        if viewModel.isProcessing {
-                            processingSection
-                        }
-                        
-                        // 🔧 처리된 내용 미리보기 - 조건 완전 제거
-                        contentPreviewSection
-                        
-                        // 🔧 강제 높이 추가 섹션들
-                        forceHeightSections
-                        
-                        // 🔧 하단 버튼 영역 - 조건 완전 제거
-                        bottomButtons
-                        
-                        // 🔧 최종 테스트 섹션
-                        finalTestSection
-                        
-                        // 🔧 강제 하단 여백
-                        Color.clear.frame(height: 500)
                     }
-                    .padding()
+                    
+                    // 파일 처리 진행 상태
+                    if viewModel.isProcessing {
+                        processingSection
+                    }
+                    
+                    // 처리된 내용 미리보기
+                    if viewModel.isProcessed {
+                        contentPreviewSection
+                    }
+                    
+                    // 하단 버튼 영역
+                    if viewModel.isFileSelected {
+                        bottomButtons
+                    }
+                    
+                    // 하단 여백
+                    Color.clear.frame(height: 50)
                 }
-                .background(Color(.systemBackground))
+                .padding()
             }
             .navigationTitle("파일 업로드")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("취소") {
-                        print("🔍 [FileUploadView] 사용자가 취소 버튼 클릭")
                         shouldStayOpen = false
                         preventDismiss = false
                         dismiss()
@@ -88,17 +72,11 @@ struct FileUploadView: View {
             .sheet(isPresented: $viewModel.showTextInput) {
                 TextInputView { text in
                     print("🔍 [FileUploadView] 텍스트 입력 받음: \(text.count)자")
-                    print("🔍 [FileUploadView] 모달 보호 상태: preventDismiss=\(preventDismiss)")
-                    
-                    // 🔧 모달 보호 강화
                     preventDismiss = true
-                    
-                    // 텍스트 처리
                     viewModel.handleTextInput(text)
-                    
                     print("🔍 [FileUploadView] 텍스트 처리 완료 후 상태 확인")
                 }
-                .interactiveDismissDisabled(preventDismiss) // 🔧 스와이프로 닫기 방지
+                .interactiveDismissDisabled(preventDismiss)
             }
             .alert("오류", isPresented: $viewModel.showError) {
                 Button("확인") {
@@ -117,12 +95,6 @@ struct FileUploadView: View {
                     viewModel.handleFileSelection(file)
                 }
             }
-            .onDisappear {
-                if shouldStayOpen && preventDismiss {
-                    print("⚠️ [FileUploadView] 예상치 못한 모달 닫힘 감지!")
-                }
-            }
-            // 🔧 상태 변화 모니터링 강화
             .onChange(of: viewModel.isFileSelected) { _, newValue in
                 print("🔍 [FileUploadView] isFileSelected 변경: \(newValue)")
             }
@@ -132,183 +104,11 @@ struct FileUploadView: View {
                     print("🎉 [FileUploadView] 파일 처리 완료 - UI 업데이트됨")
                 }
             }
-            .onChange(of: viewModel.showTextInput) { _, newValue in
-                print("🔍 [FileUploadView] showTextInput 변경: \(newValue)")
-                if !newValue {
-                    // 텍스트 입력 모달이 닫혔을 때
-                    print("🔍 [FileUploadView] 텍스트 입력 모달 닫힘")
-                }
-            }
             .onChange(of: viewModel.contentPreview) { _, newValue in
                 print("🔍 [FileUploadView] contentPreview 변경: \(newValue.count)자")
             }
         }
-        .interactiveDismissDisabled(preventDismiss) // 🔧 메인 모달도 보호
-    }
-    
-    // 🔧 최종 테스트 섹션
-    private var finalTestSection: some View {
-        VStack(spacing: 20) {
-            Text("🎯 최종 도달 지점!")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color.black)
-                .cornerRadius(12)
-            
-            Text("여기까지 스크롤되었다면 성공입니다!")
-                .font(.title2)
-                .foregroundColor(.green)
-                .multilineTextAlignment(.center)
-                .padding()
-            
-            Button("🎉 스크롤 성공!") {
-                print("🎉 스크롤 테스트 성공!")
-            }
-            .font(.headline)
-            .foregroundColor(.white)
-            .padding()
-            .frame(maxWidth: .infinity)
-            .background(Color.green)
-            .cornerRadius(12)
-        }
-        .frame(height: 200)
-    }
-    
-    // 🔧 강제 높이 추가 섹션들
-    private var forceHeightSections: some View {
-        VStack(spacing: 20) {
-            // 스크롤 테스트 섹션 1
-            VStack {
-                Text("🔍 스크롤 테스트 섹션 1")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.red)
-                    .cornerRadius(8)
-                
-                Text("이 섹션이 보이면 스크롤이 작동하는 것입니다.")
-                    .font(.body)
-                    .padding()
-                
-                // 🔧 강제 높이 추가
-                Rectangle()
-                    .fill(Color.red.opacity(0.3))
-                    .frame(height: 100)
-                    .overlay(
-                        Text("빨간색 영역 - 계속 스크롤하세요")
-                            .foregroundColor(.white)
-                    )
-            }
-            
-            // 스크롤 테스트 섹션 2
-            VStack {
-                Text("🔍 스크롤 테스트 섹션 2")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.orange)
-                    .cornerRadius(8)
-                
-                Text("더 아래로 스크롤해보세요.")
-                    .font(.body)
-                    .padding()
-                
-                Rectangle()
-                    .fill(Color.orange.opacity(0.3))
-                    .frame(height: 100)
-                    .overlay(
-                        Text("주황색 영역 - 계속 스크롤하세요")
-                            .foregroundColor(.white)
-                    )
-            }
-            
-            // 스크롤 테스트 섹션 3
-            VStack {
-                Text("🔍 스크롤 테스트 섹션 3")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.green)
-                    .cornerRadius(8)
-                
-                Text("계속 스크롤해보세요.")
-                    .font(.body)
-                    .padding()
-                
-                Rectangle()
-                    .fill(Color.green.opacity(0.3))
-                    .frame(height: 100)
-                    .overlay(
-                        Text("초록색 영역 - 계속 스크롤하세요")
-                            .foregroundColor(.white)
-                    )
-            }
-            
-            // 스크롤 테스트 섹션 4
-            VStack {
-                Text("🔍 스크롤 테스트 섹션 4")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.blue)
-                    .cornerRadius(8)
-                
-                Text("거의 다 왔습니다.")
-                    .font(.body)
-                    .padding()
-                
-                Rectangle()
-                    .fill(Color.blue.opacity(0.3))
-                    .frame(height: 100)
-                    .overlay(
-                        Text("파란색 영역 - 거의 다 왔어요!")
-                            .foregroundColor(.white)
-                    )
-            }
-        }
-    }
-    
-    // 🔧 디버깅 정보 섹션
-    private var debugInfoSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("🔍 디버깅 상태:")
-                .font(.caption)
-                .foregroundColor(.red)
-            Text("isFileSelected: \(viewModel.isFileSelected)")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Text("isProcessed: \(viewModel.isProcessed)")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Text("isProcessing: \(viewModel.isProcessing)")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Text("contentPreview.count: \(viewModel.contentPreview.count)")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Text("contentPreview.isEmpty: \(viewModel.contentPreview.isEmpty)")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            if let doc = viewModel.processedDocument {
-                Text("processedDocument exists: wordCount=\(doc.wordCount)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            } else {
-                Text("processedDocument: nil")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding(8)
-        .background(Color.yellow.opacity(0.2))
-        .cornerRadius(4)
+        .interactiveDismissDisabled(preventDismiss)
     }
     
     // MARK: - Header Section
@@ -333,7 +133,6 @@ struct FileUploadView: View {
                     .foregroundColor(.secondary)
             }
         }
-        .frame(height: 180) // 🔧 고정 높이
     }
     
     // MARK: - Upload Section
@@ -421,31 +220,23 @@ struct FileUploadView: View {
                 }
             }
         }
-        .frame(height: 220) // 🔧 고정 높이
     }
     
-    // 🔧 File Info Section - 조건 제거하고 항상 표시
+    // MARK: - File Info Section
     private var fileInfoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if viewModel.isFileSelected {
-                Text("선택된 파일")
-                    .font(.headline)
-                
-                VStack(spacing: 8) {
-                    fileInfoRow(icon: "doc.text", title: "파일명", value: viewModel.fileName)
-                    fileInfoRow(icon: "externaldrive", title: "크기", value: viewModel.fileSize)
-                    fileInfoRow(icon: "tag", title: "형식", value: viewModel.fileType)
-                }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(8)
-            } else {
-                Text("파일 선택 대기 중...")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            Text("선택된 파일")
+                .font(.headline)
+            
+            VStack(spacing: 8) {
+                fileInfoRow(icon: "doc.text", title: "파일명", value: viewModel.fileName)
+                fileInfoRow(icon: "externaldrive", title: "크기", value: viewModel.fileSize)
+                fileInfoRow(icon: "tag", title: "형식", value: viewModel.fileType)
             }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(8)
         }
-        .frame(height: 130) // 🔧 고정 높이
     }
     
     // MARK: - Processing Section
@@ -483,13 +274,13 @@ struct FileUploadView: View {
         }
     }
     
-    // 🔧 Content Preview Section - 조건 완전 제거하고 항상 표시
+    // MARK: - Content Preview Section
     private var contentPreviewSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "eye")
                     .foregroundColor(.green)
-                Text("📋 내용 미리보기")
+                Text("내용 미리보기")
                     .font(.headline)
                 Spacer()
                 
@@ -503,59 +294,18 @@ struct FileUploadView: View {
                 }
             }
             
-            // 🔧 ScrollView 높이 고정으로 스크롤 테스트
-            VStack {
-                if viewModel.contentPreview.isEmpty {
-                    VStack {
-                        Text("⚠️ 내용을 불러오는 중...")
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                        Text("contentPreview.count: \(viewModel.contentPreview.count)")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
+            ScrollView {
+                Text(viewModel.contentPreview.isEmpty ? "내용을 불러오는 중..." : viewModel.contentPreview)
+                    .font(.body)
+                    .lineLimit(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    Text("✅ \(viewModel.contentPreview)")
-                        .font(.body)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .foregroundColor(.primary)
-                }
+                    .foregroundColor(viewModel.contentPreview.isEmpty ? .secondary : .primary)
             }
-            .frame(height: 150) // 🔧 고정 높이
+            .frame(maxHeight: 150)
             .padding()
             .background(Color(.systemGray6))
             .cornerRadius(8)
-            
-            // 디버깅 정보 추가
-            VStack(alignment: .leading, spacing: 4) {
-                Text("🔧 디버깅 정보:")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                if let doc = viewModel.processedDocument {
-                    Text("✅ 원본 텍스트 길이: \(doc.content.count)자")
-                        .font(.caption)
-                        .foregroundColor(.green)
-                    Text("✅ 현재 상태: isProcessed=\(viewModel.isProcessed)")
-                        .font(.caption)
-                        .foregroundColor(.green)
-                } else {
-                    Text("❌ processedDocument가 nil입니다")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                }
-                
-                Text("미리보기 길이: \(viewModel.contentPreview.count)자")
-                    .font(.caption)
-                    .foregroundColor(viewModel.contentPreview.isEmpty ? .red : .green)
-                Text("미리보기 isEmpty: \(viewModel.contentPreview.isEmpty)")
-                    .font(.caption)
-                    .foregroundColor(viewModel.contentPreview.isEmpty ? .red : .green)
-            }
-            .padding(.top, 8)
         }
-        .frame(height: 320) // 🔧 고정 높이
     }
     
     // 파일 정보 행
@@ -577,77 +327,48 @@ struct FileUploadView: View {
         }
     }
     
-    // 🔧 Bottom Buttons - 조건 완전 제거하고 항상 표시
+    // MARK: - Bottom Buttons
     private var bottomButtons: some View {
         VStack(spacing: 12) {
-            Text("🔧 하단 버튼 영역")
+            // 다음 단계 버튼
+            Button(action: {
+                viewModel.proceedToNextStep()
+            }) {
+                HStack {
+                    Text(viewModel.isProcessed ? "요약 설정" : "파일 처리")
+                    Image(systemName: "arrow.right")
+                }
                 .font(.headline)
                 .foregroundColor(.white)
-                .padding()
                 .frame(maxWidth: .infinity)
-                .background(Color.purple)
-                .cornerRadius(8)
+                .padding()
+                .background(viewModel.isProcessing ? Color.gray : Color.blue)
+                .cornerRadius(12)
+            }
+            .disabled(viewModel.isProcessing)
             
-            // 🔧 항상 버튼 표시
-            if viewModel.isFileSelected {
-                // 다음 단계 버튼
+            HStack(spacing: 16) {
+                // 다른 파일 선택 버튼
                 Button(action: {
-                    viewModel.proceedToNextStep()
+                    viewModel.clearSelectedFile()
                 }) {
-                    HStack {
-                        Text(viewModel.isProcessed ? "✅ 요약 설정" : "⏳ 파일 처리")
-                        Image(systemName: "arrow.right")
-                    }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(viewModel.isProcessing ? Color.gray : Color.blue)
-                    .cornerRadius(12)
+                    Text("다른 파일 선택")
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
                 }
-                .disabled(viewModel.isProcessing)
                 
-                HStack(spacing: 16) {
-                    // 다른 파일 선택 버튼
-                    Button(action: {
-                        viewModel.clearSelectedFile()
-                    }) {
-                        Text("🔄 다른 파일 선택")
-                            .font(.subheadline)
-                            .foregroundColor(.blue)
-                    }
-                    
-                    // 🔧 재처리 버튼 - 항상 표시
+                // 재처리 버튼 (처리 완료 후에만 표시)
+                if viewModel.isProcessed {
                     Button(action: {
                         viewModel.reprocessContent()
                     }) {
-                        Text("🛠️ 다시 처리")
+                        Text("다시 처리")
                             .font(.subheadline)
                             .foregroundColor(.orange)
                     }
                 }
-            } else {
-                Text("📂 파일을 선택하거나 텍스트를 입력해주세요")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
-            
-            // 🔧 강제 테스트 버튼 (디버깅용)
-            Button("🔧 강제 상태 확인") {
-                print("🔧 [DEBUG] 강제 상태 확인:")
-                print("  - isFileSelected: \(viewModel.isFileSelected)")
-                print("  - isProcessed: \(viewModel.isProcessed)")
-                print("  - isProcessing: \(viewModel.isProcessing)")
-                print("  - contentPreview: '\(viewModel.contentPreview)'")
-                print("  - processedDocument: \(viewModel.processedDocument != nil)")
-            }
-            .font(.caption)
-            .foregroundColor(.red)
-            .padding()
-            .background(Color.red.opacity(0.1))
-            .cornerRadius(8)
         }
-        .frame(height: 280) // 🔧 고정 높이
     }
     
     // MARK: - Helper Methods
