@@ -2,15 +2,16 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-// UIKit의 UIDocumentPickerViewController를 SwiftUI에서 사용하기 위한 브릿지
+// 더 안전한 DocumentPicker 구현
 struct DocumentPicker: UIViewControllerRepresentable {
     let onFileSelected: ((URL) -> Void)?
+    @Environment(\.dismiss) private var dismiss
     
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         let picker = UIDocumentPickerViewController(
             forOpeningContentTypes: [
-                UTType.pdf,           // PDF 파일
-                UTType(filenameExtension: "docx")!, // .docx만 지원
+                .pdf,           // PDF 파일
+                .data           // 모든 데이터 파일 (DOCX 포함)
             ]
         )
         
@@ -44,33 +45,22 @@ struct DocumentPicker: UIViewControllerRepresentable {
                 return
             }
             
+            // 파일 형식 검증
+            let fileExtension = url.pathExtension.lowercased()
+            guard ["pdf", "docx"].contains(fileExtension) else {
+                print("❌ [DocumentPicker] 지원하지 않는 파일 형식: \(fileExtension)")
+                return
+            }
+            
             print("✅ [DocumentPicker] 선택된 파일: \(url.lastPathComponent)")
             
-            // 🔧 안전한 콜백 실행
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                print("🔍 [DocumentPicker] 콜백 실행")
-                
-                // 뷰 서비스 오류 방지를 위해 지연 없이 즉시 실행
-                self.parent.onFileSelected?(url)
-                print("✅ [DocumentPicker] 콜백 완료")
-            }
+            // 🔧 즉시 콜백 실행 (뷰 서비스 종료 전에)
+            self.parent.onFileSelected?(url)
+            print("✅ [DocumentPicker] 콜백 완료")
         }
         
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
             print("🔍 [DocumentPicker] 사용자가 취소함")
-            // 아무것도 하지 않음 - 자동으로 닫힘
-        }
-        
-        // 🔧 추가: 오류 처리
-        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentAt url: URL) {
-            // 단일 파일 선택 시 호출될 수 있는 메서드
-            print("🔍 [DocumentPicker] 단일 파일 선택됨: \(url.lastPathComponent)")
-            
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.parent.onFileSelected?(url)
-            }
         }
     }
 }
