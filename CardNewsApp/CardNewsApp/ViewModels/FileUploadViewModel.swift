@@ -25,6 +25,9 @@ class FileUploadViewModel: ObservableObject {
     @Published var isProcessed: Bool = false
     @Published var contentPreview: String = ""
     
+    // 요약 설정 화면 관련 상태 ✅ NEW!
+    @Published var showSummaryConfig: Bool = false
+    
     // 상수 정의
     private let maxFileSize: Int = 10 * 1024 * 1024 // 10MB
     private let supportedExtensions = ["pdf", "docx"]
@@ -221,11 +224,11 @@ class FileUploadViewModel: ObservableObject {
         }
     }
     
-    // 요약 설정 화면으로 이동
+    // 요약 설정 화면으로 이동 ✅ UPDATED!
     private func proceedToSummaryConfig() {
         guard let processed = processedDocument else { return }
         print("🎯 [DEBUG] 요약 설정 화면으로 이동: \(processed.originalDocument.fileName)")
-        // TODO: 요약 설정 화면으로 네비게이션
+        showSummaryConfig = true
     }
     
     // 파일 다시 처리
