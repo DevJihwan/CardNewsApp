@@ -10,8 +10,7 @@ struct DocumentPicker: UIViewControllerRepresentable {
         let picker = UIDocumentPickerViewController(
             forOpeningContentTypes: [
                 UTType.pdf,           // PDF 파일
-                UTType("org.openxmlformats.wordprocessingml.document")!, // .docx
-                UTType("com.microsoft.word.doc")! // .doc (레거시)
+                UTType(filenameExtension: "docx")!, // .docx만 지원
             ]
         )
         
@@ -47,9 +46,12 @@ struct DocumentPicker: UIViewControllerRepresentable {
             
             print("✅ [DocumentPicker] 선택된 파일: \(url.lastPathComponent)")
             
-            // 메인 스레드에서 콜백만 실행 (모달은 자동으로 닫힘)
-            DispatchQueue.main.async {
+            // 🔧 안전한 콜백 실행
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
                 print("🔍 [DocumentPicker] 콜백 실행")
+                
+                // 뷰 서비스 오류 방지를 위해 지연 없이 즉시 실행
                 self.parent.onFileSelected?(url)
                 print("✅ [DocumentPicker] 콜백 완료")
             }
@@ -58,6 +60,17 @@ struct DocumentPicker: UIViewControllerRepresentable {
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
             print("🔍 [DocumentPicker] 사용자가 취소함")
             // 아무것도 하지 않음 - 자동으로 닫힘
+        }
+        
+        // 🔧 추가: 오류 처리
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentAt url: URL) {
+            // 단일 파일 선택 시 호출될 수 있는 메서드
+            print("🔍 [DocumentPicker] 단일 파일 선택됨: \(url.lastPathComponent)")
+            
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.parent.onFileSelected?(url)
+            }
         }
     }
 }
