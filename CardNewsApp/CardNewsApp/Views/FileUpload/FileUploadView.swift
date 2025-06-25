@@ -5,6 +5,7 @@ struct FileUploadView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var shouldStayOpen = true
     @State private var preventDismiss = true
+    @State private var showingFilePicker = false // 🔧 로컬 상태로 관리
     
     let preselectedFile: URL?
     
@@ -59,20 +60,15 @@ struct FileUploadView: View {
                     }
                 }
             }
-            .sheet(isPresented: $viewModel.showFilePicker) {
-                // 🔧 DocumentPicker 모달이 닫힌 후 실행되는 콜백
-                print("🔍 [FileUploadView] DocumentPicker 모달 닫힘")
-            } content: {
-                DocumentPicker { url in
+            // 🔧 fullScreenCover 사용으로 모달 분리
+            .fullScreenCover(isPresented: $showingFilePicker) {
+                SafeDocumentPicker { url in
                     print("🔍 [FileUploadView] 파일 선택 콜백 받음: \(url.lastPathComponent)")
-                    
-                    // 🔧 즉시 처리 (뷰 서비스 종료 전에)
                     handleFileSelection(url)
-                    
-                    // 🔧 DocumentPicker 모달 닫기
-                    DispatchQueue.main.async {
-                        viewModel.showFilePicker = false
-                    }
+                    showingFilePicker = false
+                } onCancel: {
+                    print("🔍 [FileUploadView] 파일 선택 취소됨")
+                    showingFilePicker = false
                 }
             }
             .alert("오류", isPresented: $viewModel.showError) {
@@ -102,7 +98,6 @@ struct FileUploadView: View {
             .onChange(of: viewModel.isFileSelected) { _, newValue in
                 print("🔍 [FileUploadView] isFileSelected 변경: \(newValue)")
                 
-                // 🔧 파일 선택 후 모달 보호 강화
                 if newValue {
                     shouldStayOpen = true
                     preventDismiss = true
@@ -117,9 +112,6 @@ struct FileUploadView: View {
             }
             .onChange(of: viewModel.contentPreview) { _, newValue in
                 print("🔍 [FileUploadView] contentPreview 변경: \(newValue.count)자")
-            }
-            .onChange(of: viewModel.showFilePicker) { _, newValue in
-                print("🔍 [FileUploadView] showFilePicker 변경: \(newValue)")
             }
         }
         .interactiveDismissDisabled(preventDismiss)
@@ -169,7 +161,7 @@ struct FileUploadView: View {
             // 파일 선택 버튼
             Button(action: {
                 print("🔍 [FileUploadView] 파일 선택 버튼 클릭")
-                viewModel.presentFilePicker()
+                showingFilePicker = true
             }) {
                 VStack(spacing: 12) {
                     Image(systemName: getUploadIconName())
@@ -412,6 +404,75 @@ struct FileUploadView: View {
             return "내용 정리 중..."
         } else {
             return "처리 완료!"
+        }
+    }
+}
+
+// 🔧 안전한 DocumentPicker 래퍼
+struct SafeDocumentPicker: View {
+    let onFileSelected: (URL) -> Void
+    let onCancel: () -> Void
+    
+    var body: some View {
+        NavigationView {
+            DocumentPickerRepresentable { url in
+                onFileSelected(url)
+            }
+            .navigationTitle("파일 선택")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("취소") {
+                        onCancel()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 🔧 분리된 DocumentPicker Representable
+struct DocumentPickerRepresentable: UIViewControllerRepresentable {
+    let onFileSelected: (URL) -> Void
+    
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(
+            forOpeningContentTypes: [.pdf, .data]
+        )
+        
+        picker.delegate = context.coordinator
+        picker.allowsMultipleSelection = false
+        picker.shouldShowFileExtensions = true
+        
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let parent: DocumentPickerRepresentable
+        
+        init(_ parent: DocumentPickerRepresentable) {
+            self.parent = parent
+        }
+        
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            guard let url = urls.first else { return }
+            
+            let fileExtension = url.pathExtension.lowercased()
+            guard ["pdf", "docx"].contains(fileExtension) else { return }
+            
+            DispatchQueue.main.async {
+                self.parent.onFileSelected(url)
+            }
+        }
+        
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+            print("🔍 [SafeDocumentPicker] 사용자가 취소함")
         }
     }
 }
