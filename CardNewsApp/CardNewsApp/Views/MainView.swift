@@ -116,16 +116,10 @@ struct MainView: View {
                     loadRecentSummaries()
                     print("🔍 [MainView] 앱 초기화 완료")
                 }
-                
-                // Notification 관찰자 등록
-                NotificationCenter.default.addObserver(
-                    forName: .summaryCompleted,
-                    object: nil,
-                    queue: .main
-                ) { _ in
-                    print("🔍 [MainView] 새로운 요약 완료 알림 수신")
-                    loadRecentSummaries()
-                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .summaryCompleted)) { _ in
+                print("🔍 [MainView] 새로운 요약 완료 알림 수신")
+                loadRecentSummaries()
             }
             .refreshable {
                 loadRecentSummaries()
@@ -329,11 +323,6 @@ struct MainView: View {
             formatter.timeStyle = .short
             return formatter.string(from: date)
         }
-    }
-    
-    deinit {
-        // Notification 관찰자 제거
-        NotificationCenter.default.removeObserver(self)
     }
 }
 
