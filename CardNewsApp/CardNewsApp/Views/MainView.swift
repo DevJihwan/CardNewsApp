@@ -478,7 +478,7 @@ struct SummaryHistoryView: View {
         if calendar.isToday(date) {
             formatter.timeStyle = .short
             return "오늘 \(formatter.string(from: date))"
-        } else if calendar.isYesterday(date) {
+        } else if calendar.isDate(date, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: now) ?? now) {
             formatter.timeStyle = .short
             return "어제 \(formatter.string(from: date))"
         } else {
