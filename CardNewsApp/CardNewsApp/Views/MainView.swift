@@ -139,6 +139,12 @@ struct MainView: View {
                 print("🔍 [MainView] 새로운 요약 완료 알림 수신")
                 loadRecentSummaries()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .dismissAllModals)) { _ in
+                print("🔍 [MainView] 모든 모달 닫기 알림 수신")
+                showFileUpload = false
+                showSummaryDetail = false
+                showAllSummaries = false
+            }
             .refreshable {
                 loadRecentSummaries()
             }
@@ -433,19 +439,6 @@ struct SummaryHistoryView: View {
             .navigationTitle("전체 요약")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        print("🔍 [SummaryHistoryView] 뒤로 버튼 클릭")
-                        dismiss()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                            Text("뒤로")
-                        }
-                        .foregroundColor(.blue)
-                    }
-                }
-                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("완료") {
                         print("🔍 [SummaryHistoryView] 완료 버튼 클릭")
@@ -546,6 +539,12 @@ struct SummaryHistoryView: View {
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }
+}
+
+// MARK: - Notification Extensions
+
+extension Notification.Name {
+    static let dismissAllModals = Notification.Name("dismissAllModals")
 }
 
 #Preview {
