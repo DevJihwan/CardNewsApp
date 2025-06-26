@@ -17,6 +17,7 @@ struct SummaryConfigView: View {
     @State private var showError = false
     @State private var showPaywall = false
     @State private var paywallTrigger: PaywallTrigger = .freeUsageExhausted
+    @State private var refreshTrigger = false // UI 강제 새로고침용
     
     let processedDocument: ProcessedDocument
     
@@ -93,8 +94,8 @@ struct SummaryConfigView: View {
             .sheet(isPresented: $showPaywall) {
                 PaywallView(triggerReason: paywallTrigger)
                     .onDisappear {
-                        // Paywall이 닫힐 때 사용량 상태 새로고침
-                        objectWillChange.send()
+                        // Paywall이 닫힐 때 UI 새로고침
+                        refreshTrigger.toggle()
                     }
             }
             .onAppear {
@@ -102,7 +103,11 @@ struct SummaryConfigView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .subscriptionStatusChanged)) { _ in
                 print("💎 [SummaryConfigView] 구독 상태 변경 알림 수신")
-                objectWillChange.send()
+                // UI 새로고침 트리거
+                refreshTrigger.toggle()
+            }
+            .onChange(of: refreshTrigger) { _, _ in
+                // refreshTrigger가 변경될 때마다 View가 다시 렌더링됨
             }
         }
     }
