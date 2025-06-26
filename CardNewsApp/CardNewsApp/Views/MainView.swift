@@ -116,6 +116,16 @@ struct MainView: View {
                     loadRecentSummaries()
                     print("🔍 [MainView] 앱 초기화 완료")
                 }
+                
+                // Notification 관찰자 등록
+                NotificationCenter.default.addObserver(
+                    forName: .summaryCompleted,
+                    object: nil,
+                    queue: .main
+                ) { _ in
+                    print("🔍 [MainView] 새로운 요약 완료 알림 수신")
+                    loadRecentSummaries()
+                }
             }
             .refreshable {
                 loadRecentSummaries()
@@ -248,6 +258,11 @@ struct MainView: View {
         print("🔍 [MainView] 최근 요약 로드 시작")
         recentSummaries = claudeService.loadSavedSummaries()
         print("🔍 [MainView] 로드된 요약 수: \(recentSummaries.count)개")
+        
+        // 로드된 요약들의 카드 수 확인
+        for summary in recentSummaries.prefix(3) {
+            print("📊 [MainView] 요약 '\(summary.originalDocument.fileName)': \(summary.cards.count)장 (설정: \(summary.config.cardCount.displayName))")
+        }
     }
     
     // 선택된 파일 카드 (메인 화면에 표시)
@@ -314,6 +329,11 @@ struct MainView: View {
             formatter.timeStyle = .short
             return formatter.string(from: date)
         }
+    }
+    
+    deinit {
+        // Notification 관찰자 제거
+        NotificationCenter.default.removeObserver(self)
     }
 }
 
