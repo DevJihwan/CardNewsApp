@@ -45,6 +45,9 @@ struct SummaryResultView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("완료") {
+                        print("🔍 [SummaryResultView] 완료 버튼 클릭 - 모든 모달 닫기")
+                        // 모든 모달을 닫는 노티피케이션 발송
+                        NotificationCenter.default.post(name: .dismissAllModals, object: nil)
                         dismiss()
                     }
                 }
@@ -423,6 +426,12 @@ extension Color {
             opacity: Double(a) / 255
         )
     }
+}
+
+// MARK: - Notification Extensions
+
+extension Notification.Name {
+    static let dismissAllModals = Notification.Name("dismissAllModals")
 }
 
 // MARK: - Preview
