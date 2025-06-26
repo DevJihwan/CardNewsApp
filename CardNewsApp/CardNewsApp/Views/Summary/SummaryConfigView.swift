@@ -28,9 +28,6 @@ struct SummaryConfigView: View {
                     // 상단 문서 정보
                     documentInfoSection
                     
-                    // API 키 상태 표시 (디버깅용)
-                    apiStatusSection
-                    
                     // 카드 수 선택
                     cardCountSection
                     
@@ -80,38 +77,6 @@ struct SummaryConfigView: View {
             .onAppear {
                 setupClaudeAPI()
             }
-        }
-    }
-    
-    // MARK: - API Status Section (디버깅용)
-    private var apiStatusSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: claudeService.isConfigured ? "checkmark.circle.fill" : "xmark.circle.fill")
-                    .foregroundColor(claudeService.isConfigured ? .green : .red)
-                Text("API 상태")
-                    .font(.headline)
-                Spacer()
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(claudeService.isConfigured ? "✅ API 키 설정됨" : "❌ API 키 없음")
-                    .font(.subheadline)
-                    .foregroundColor(claudeService.isConfigured ? .green : .red)
-                
-                if claudeService.isConfigured {
-                    Text("Claude API 호출 준비 완료")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                } else {
-                    Text("API 키를 확인해주세요")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                }
-            }
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
         }
     }
     
@@ -335,10 +300,10 @@ struct SummaryConfigView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(isGeneratingSummary || !claudeService.isConfigured ? Color.gray : Color.blue)
+                .background(isGeneratingSummary ? Color.gray : Color.blue)
                 .cornerRadius(12)
             }
-            .disabled(isGeneratingSummary || !claudeService.isConfigured)
+            .disabled(isGeneratingSummary)
             
             // 생성 진행 중일 때 설명 텍스트
             if isGeneratingSummary {
