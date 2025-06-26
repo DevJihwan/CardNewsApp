@@ -373,7 +373,7 @@ struct SummaryHistoryView: View {
     let summaries: [SummaryResult]
     
     var body: some View {
-        NavigationStack {
+        NavigationView {
             VStack {
                 if summaries.isEmpty {
                     // 빈 상태 - 중앙 정렬로 전체 화면 사용
@@ -430,24 +430,29 @@ struct SummaryHistoryView: View {
                     .listStyle(PlainListStyle())
                 }
             }
-        }
-        .navigationTitle("전체 요약")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button("← 뒤로") {
-                    print("🔍 [SummaryHistoryView] 뒤로 버튼 클릭")
-                    dismiss()
+            .navigationTitle("전체 요약")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        print("🔍 [SummaryHistoryView] 뒤로 버튼 클릭")
+                        dismiss()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                            Text("뒤로")
+                        }
+                        .foregroundColor(.blue)
+                    }
                 }
-                .foregroundColor(.blue)
-            }
-            
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("완료") {
-                    print("🔍 [SummaryHistoryView] 완료 버튼 클릭")
-                    dismiss()
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("완료") {
+                        print("🔍 [SummaryHistoryView] 완료 버튼 클릭")
+                        dismiss()
+                    }
+                    .foregroundColor(.blue)
                 }
-                .foregroundColor(.blue)
             }
         }
         .sheet(isPresented: $showSummaryDetail) {
