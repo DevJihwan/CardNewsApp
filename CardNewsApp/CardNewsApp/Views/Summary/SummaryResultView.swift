@@ -428,12 +428,6 @@ extension Color {
     }
 }
 
-// MARK: - Notification Extensions
-
-extension Notification.Name {
-    static let dismissAllModals = Notification.Name("dismissAllModals")
-}
-
 // MARK: - Preview
 
 #Preview {
