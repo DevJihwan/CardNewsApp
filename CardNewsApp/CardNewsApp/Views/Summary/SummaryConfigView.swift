@@ -5,7 +5,7 @@ struct SummaryConfigView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var summaryConfig = SummaryConfig(
         cardCount: .four,
-        outputStyle: .webtoon,
+        outputStyle: .text,
         language: .korean,
         tone: .friendly
     )
@@ -70,6 +70,11 @@ struct SummaryConfigView: View {
             .sheet(isPresented: $showSummaryResult) {
                 if let summary = generatedSummary {
                     SummaryResultView(summaryResult: summary)
+                        .onDisappear {
+                            // 요약 결과 화면이 닫힐 때 MainView 새로고침 알림
+                            NotificationCenter.default.post(name: .summaryCompleted, object: nil)
+                            dismiss() // SummaryConfigView도 닫기
+                        }
                 }
             }
             .onAppear {
@@ -157,6 +162,7 @@ struct SummaryConfigView: View {
                             language: summaryConfig.language,
                             tone: summaryConfig.tone
                         )
+                        print("🔍 [SummaryConfigView] 카드 수 선택: \(count.displayName)")
                     }) {
                         VStack(spacing: 8) {
                             Text("\(count.rawValue)")
@@ -197,6 +203,7 @@ struct SummaryConfigView: View {
                             language: summaryConfig.language,
                             tone: summaryConfig.tone
                         )
+                        print("🔍 [SummaryConfigView] 출력 스타일 선택: \(style.displayName)")
                     }) {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
@@ -251,6 +258,7 @@ struct SummaryConfigView: View {
                             language: language,
                             tone: summaryConfig.tone
                         )
+                        print("🔍 [SummaryConfigView] 언어 선택: \(language.displayName)")
                     }) {
                         Text(language.displayName)
                             .font(.subheadline)
@@ -290,6 +298,7 @@ struct SummaryConfigView: View {
                             language: summaryConfig.language,
                             tone: tone
                         )
+                        print("🔍 [SummaryConfigView] 톤 선택: \(tone.displayName)")
                     }) {
                         Text(tone.displayName)
                             .font(.subheadline)
@@ -334,8 +343,13 @@ struct SummaryConfigView: View {
             // 생성 진행 중일 때 설명 텍스트
             if isGeneratingSummary {
                 VStack(spacing: 8) {
-                    Text("AI가 문서를 분석하여 카드뉴스를 생성하고 있습니다")
+                    Text("AI가 문서를 분석하여 \(summaryConfig.cardCount.displayName) 카드뉴스를 생성하고 있습니다")
                         .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    Text("설정: \(summaryConfig.outputStyle.displayName), \(summaryConfig.language.displayName), \(summaryConfig.tone.displayName)")
+                        .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                     
@@ -388,6 +402,7 @@ struct SummaryConfigView: View {
     
     private func generateSummary() {
         print("🔍 [SummaryConfigView] 카드뉴스 생성 시작")
+        print("🔧 [SummaryConfigView] 설정: \(summaryConfig.cardCount.displayName), \(summaryConfig.outputStyle.displayName), \(summaryConfig.language.displayName), \(summaryConfig.tone.displayName)")
         print("🔧 [SummaryConfigView] API 설정 상태: \(claudeService.isConfigured)")
         
         isGeneratingSummary = true
@@ -403,7 +418,7 @@ struct SummaryConfigView: View {
                     generatedSummary = result
                     showSummaryResult = true
                     isGeneratingSummary = false
-                    print("🎉 [SummaryConfigView] 카드뉴스 생성 완료!")
+                    print("🎉 [SummaryConfigView] 카드뉴스 생성 완료! 카드 수: \(result.cards.count)장")
                 }
                 
             } catch {
@@ -416,6 +431,11 @@ struct SummaryConfigView: View {
             }
         }
     }
+}
+
+// MARK: - Notification Extension
+extension Notification.Name {
+    static let summaryCompleted = Notification.Name("summaryCompleted")
 }
 
 #Preview {
