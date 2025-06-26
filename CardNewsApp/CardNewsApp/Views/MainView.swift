@@ -8,6 +8,7 @@ struct MainView: View {
     @State private var recentSummaries: [SummaryResult] = []
     @State private var showSummaryDetail = false
     @State private var selectedSummary: SummaryResult?
+    @State private var showAllSummaries = false
     
     var body: some View {
         NavigationStack {
@@ -107,7 +108,24 @@ struct MainView: View {
             .sheet(isPresented: $showSummaryDetail) {
                 if let summary = selectedSummary {
                     SummaryResultView(summaryResult: summary)
+                        .onAppear {
+                            print("🔍 [MainView] SummaryResultView 모달 표시")
+                            print("📄 [MainView] 선택된 요약: \(summary.originalDocument.fileName)")
+                            print("🎯 [MainView] 카드 수: \(summary.cards.count)장")
+                        }
+                } else {
+                    Text("선택된 요약이 없습니다")
+                        .foregroundColor(.red)
+                        .onAppear {
+                            print("❌ [MainView] selectedSummary가 nil입니다")
+                        }
                 }
+            }
+            .sheet(isPresented: $showAllSummaries) {
+                SummaryHistoryView(summaries: recentSummaries)
+                    .onAppear {
+                        print("🔍 [MainView] SummaryHistoryView 모달 표시")
+                    }
             }
             .onAppear {
                 // 🔧 앱 초기화 완료 후 일정 시간 대기
@@ -137,7 +155,8 @@ struct MainView: View {
                 Spacer()
                 if !recentSummaries.isEmpty {
                     Button("전체 보기") {
-                        // TODO: 히스토리 화면으로 이동
+                        print("🔍 [MainView] 전체 보기 버튼 클릭")
+                        showAllSummaries = true
                     }
                     .font(.caption)
                     .foregroundColor(.blue)
@@ -176,8 +195,21 @@ struct MainView: View {
     
     private func summaryCard(_ summary: SummaryResult) -> some View {
         Button(action: {
+            print("🔍 [MainView] 요약 카드 선택됨")
+            print("📄 [MainView] 파일명: \(summary.originalDocument.fileName)")
+            print("🎯 [MainView] 카드 수: \(summary.cards.count)장")
+            print("📝 [MainView] 카드 내용 확인:")
+            
+            // 각 카드의 내용을 상세히 로그
+            for (index, card) in summary.cards.enumerated() {
+                print("  📇 카드 \(index + 1): '\(card.title)' (내용: \(card.content.count)자)")
+                print("     내용 미리보기: \(card.content.prefix(100))...")
+            }
+            
             selectedSummary = summary
             showSummaryDetail = true
+            
+            print("✅ [MainView] selectedSummary 설정 완료, showSummaryDetail = true")
         }) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -215,6 +247,11 @@ struct MainView: View {
                         .font(.caption)
                         .foregroundColor(.primary)
                         .lineLimit(2)
+                        .padding(.top, 4)
+                } else {
+                    Text("카드 정보 없음")
+                        .font(.caption)
+                        .foregroundColor(.red)
                         .padding(.top, 4)
                 }
             }
@@ -320,6 +357,132 @@ struct MainView: View {
             return "\(hours)시간 전"
         } else {
             formatter.dateStyle = .short
+            formatter.timeStyle = .short
+            return formatter.string(from: date)
+        }
+    }
+}
+
+// MARK: - Summary History View
+
+struct SummaryHistoryView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedSummary: SummaryResult?
+    @State private var showSummaryDetail = false
+    
+    let summaries: [SummaryResult]
+    
+    var body: some View {
+        NavigationStack {
+            if summaries.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "tray")
+                        .font(.system(size: 50))
+                        .foregroundColor(.gray)
+                    
+                    Text("저장된 요약이 없습니다")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("첫 번째 문서를 업로드해보세요!")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(summaries, id: \.id) { summary in
+                        summaryHistoryRow(summary)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                print("🔍 [SummaryHistoryView] 요약 선택: \(summary.originalDocument.fileName)")
+                                selectedSummary = summary
+                                showSummaryDetail = true
+                            }
+                    }
+                }
+                .listStyle(PlainListStyle())
+            }
+        }
+        .navigationTitle("전체 요약")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("완료") {
+                    dismiss()
+                }
+            }
+        }
+        .sheet(isPresented: $showSummaryDetail) {
+            if let summary = selectedSummary {
+                SummaryResultView(summaryResult: summary)
+            }
+        }
+    }
+    
+    private func summaryHistoryRow(_ summary: SummaryResult) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(summary.originalDocument.fileName)
+                        .font(.headline)
+                        .lineLimit(2)
+                    
+                    HStack(spacing: 12) {
+                        Label("\(summary.cards.count)컷", systemImage: "rectangle.3.group")
+                        Label(summary.config.outputStyle.displayName, systemImage: "paintbrush")
+                        Label(summary.config.language.displayName, systemImage: "globe")
+                        Label(summary.config.tone.displayName, systemImage: "waveform")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(formatHistoryDate(summary.createdAt))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Text("\(summary.tokensUsed) 토큰")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            // 첫 번째 카드 미리보기
+            if let firstCard = summary.cards.first {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(firstCard.title)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+                    
+                    Text(firstCard.content)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(3)
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private func formatHistoryDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        let now = Date()
+        let calendar = Calendar.current
+        
+        if calendar.isToday(date) {
+            formatter.timeStyle = .short
+            return "오늘 \(formatter.string(from: date))"
+        } else if calendar.isYesterday(date) {
+            formatter.timeStyle = .short
+            return "어제 \(formatter.string(from: date))"
+        } else {
+            formatter.dateStyle = .medium
             formatter.timeStyle = .short
             return formatter.string(from: date)
         }
