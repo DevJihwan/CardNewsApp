@@ -351,15 +351,13 @@ struct SummaryConfigView: View {
     // MARK: - Helper Methods
     
     private func setupClaudeAPI() {
-        // 🚨 임시 테스트용 - 여기에 실제 API 키를 넣어보세요
-        // 형식: sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-        let testAPIKey = "여기에_실제_Claude_API_키를_입력하세요"
+        // Info.plist에서 이미 API 키가 로드되었으므로 추가 설정 불필요
+        print("🔍 [SummaryConfigView] API 설정 확인 - isConfigured: \(claudeService.isConfigured)")
         
-        if testAPIKey != "여기에_실제_Claude_API_키를_입력하세요" {
-            claudeService.setAPIKey(testAPIKey)
-            print("🔍 [SummaryConfigView] 테스트 API 키로 설정 완료")
+        if claudeService.isConfigured {
+            print("✅ [SummaryConfigView] Claude API 준비 완료")
         } else {
-            print("⚠️ [SummaryConfigView] 테스트 API 키를 설정해주세요")
+            print("⚠️ [SummaryConfigView] API 키가 설정되지 않았습니다")
         }
     }
     
@@ -390,6 +388,8 @@ struct SummaryConfigView: View {
     
     private func generateSummary() {
         print("🔍 [SummaryConfigView] 카드뉴스 생성 시작")
+        print("🔧 [SummaryConfigView] API 설정 상태: \(claudeService.isConfigured)")
+        
         isGeneratingSummary = true
         
         Task {
