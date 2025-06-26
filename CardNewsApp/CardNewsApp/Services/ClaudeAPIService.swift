@@ -303,16 +303,35 @@ class ClaudeAPIService: ObservableObject {
     
     private func parseCardsFromResponse(_ responseText: String, config: SummaryConfig) throws -> [SummaryResult.CardContent] {
         print("🔍 [ClaudeAPIService] 응답 파싱 시작")
+        print("📝 [ClaudeAPIService] 응답 내용: \(responseText.prefix(500))...")
         
-        // JSON 블록 추출
-        guard let jsonRange = responseText.range(of: "```json\\s*\\n(.+?)\\n```", options: .regularExpression) else {
-            throw ClaudeAPIError.decodingError(NSError(domain: "JSONParsingError", code: 1, userInfo: [NSLocalizedDescriptionKey: "JSON 형식을 찾을 수 없습니다."]))
+        // 여러 방법으로 JSON 추출 시도
+        var jsonText: String = ""
+        
+        // 방법 1: ```json ``` 블록 찾기
+        if let startRange = responseText.range(of: "```json"),
+           let endRange = responseText.range(of: "```", range: startRange.upperBound..<responseText.endIndex) {
+            
+            let fullRange = startRange.upperBound..<endRange.lowerBound
+            jsonText = String(responseText[fullRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+            print("🔍 [ClaudeAPIService] 방법 1: JSON 블록 발견")
+            
+        } 
+        // 방법 2: { } 객체 찾기
+        else if let startBrace = responseText.firstIndex(of: "{"),
+                let lastBrace = responseText.lastIndex(of: "}") {
+            
+            jsonText = String(responseText[startBrace...lastBrace])
+            print("🔍 [ClaudeAPIService] 방법 2: JSON 객체 발견")
+            
+        }
+        // 방법 3: 직접 JSON으로 파싱 시도
+        else {
+            jsonText = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
+            print("🔍 [ClaudeAPIService] 방법 3: 전체 응답을 JSON으로 시도")
         }
         
-        let jsonText = String(responseText[jsonRange])
-            .replacingOccurrences(of: "```json", with: "")
-            .replacingOccurrences(of: "```", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        print("🔍 [ClaudeAPIService] 추출된 JSON: \(jsonText.prefix(200))...")
         
         guard let jsonData = jsonText.data(using: .utf8) else {
             throw ClaudeAPIError.decodingError(NSError(domain: "JSONParsingError", code: 2, userInfo: [NSLocalizedDescriptionKey: "JSON 데이터 변환 실패"]))
@@ -346,6 +365,7 @@ class ClaudeAPIService: ObservableObject {
             
         } catch {
             print("❌ [ClaudeAPIService] JSON 파싱 실패: \(error)")
+            print("📝 [ClaudeAPIService] 파싱 시도한 JSON: \(jsonText)")
             throw ClaudeAPIError.decodingError(error)
         }
     }
