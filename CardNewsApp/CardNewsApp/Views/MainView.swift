@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainView: View {
     @StateObject private var claudeService = ClaudeAPIService()
+    @StateObject private var usageService = UsageTrackingService()
     @State private var showFileUpload = false
     @State private var selectedFileURL: URL?
     @State private var isAppInitialized = false
@@ -9,6 +10,7 @@ struct MainView: View {
     @State private var showSummaryDetail = false
     @State private var selectedSummary: SummaryResult?
     @State private var showAllSummaries = false
+    @State private var showPaywall = false
     
     var body: some View {
         NavigationStack {
@@ -29,6 +31,9 @@ struct MainView: View {
                             .foregroundColor(.secondary)
                     }
                     
+                    // 사용량 상태 표시
+                    usageStatusCard
+                    
                     // 선택된 파일 정보 표시 (모달이 닫혔을 때)
                     if let fileURL = selectedFileURL, !showFileUpload {
                         selectedFileCard(fileURL)
@@ -37,6 +42,11 @@ struct MainView: View {
                     // 파일 업로드 버튼
                     Button(action: {
                         print("🔍 [MainView] 파일 업로드 버튼 클릭")
+                        // 무료 사용량 확인
+                        if !usageService.canCreateTextCardNews() {
+                            showPaywall = true
+                            return
+                        }
                         openFileUpload()
                     }) {
                         VStack(spacing: 8) {
@@ -99,6 +109,17 @@ struct MainView: View {
                 .padding()
             }
             .navigationTitle("CardNews")
+            .toolbar {
+                if usageService.isSubscriptionActive {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("💎 \(usageService.currentSubscriptionTier.displayName)") {
+                            // TODO: 구독 관리 화면
+                        }
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                    }
+                }
+            }
             .sheet(isPresented: $showFileUpload) {
                 FileUploadView(preselectedFile: selectedFileURL)
                     .onAppear {
@@ -127,6 +148,12 @@ struct MainView: View {
                         print("🔍 [MainView] SummaryHistoryView 모달 표시")
                     }
             }
+            .sheet(isPresented: $showPaywall) {
+                PaywallView(triggerReason: .freeUsageExhausted)
+                    .onAppear {
+                        print("💰 [MainView] PaywallView 모달 표시")
+                    }
+            }
             .onAppear {
                 // 🔧 앱 초기화 완료 후 일정 시간 대기
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -144,11 +171,96 @@ struct MainView: View {
                 showFileUpload = false
                 showSummaryDetail = false
                 showAllSummaries = false
+                showPaywall = false
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .subscriptionStatusChanged)) { _ in
+                print("💎 [MainView] 구독 상태 변경 알림 수신")
+                objectWillChange.send()
             }
             .refreshable {
                 loadRecentSummaries()
             }
         }
+    }
+    
+    // MARK: - Usage Status Card
+    private var usageStatusCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: usageService.isSubscriptionActive ? "crown.fill" : "gift.fill")
+                    .foregroundColor(usageService.isSubscriptionActive ? .orange : .green)
+                    .font(.title2)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(usageService.isSubscriptionActive ? "프리미엄 구독자" : "무료 체험")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    if usageService.isSubscriptionActive {
+                        Text("\(usageService.currentSubscriptionTier.displayName) 플랜 • 무제한 이용")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("남은 무료 횟수: \(usageService.remainingFreeUsage)/2회")
+                            .font(.subheadline)
+                            .foregroundColor(usageService.remainingFreeUsage > 0 ? .secondary : .red)
+                    }
+                }
+                
+                Spacer()
+                
+                if !usageService.isSubscriptionActive {
+                    Button("업그레이드") {
+                        showPaywall = true
+                    }
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.orange)
+                    .cornerRadius(8)
+                }
+            }
+            
+            // 무료 사용량 진행 바
+            if !usageService.isSubscriptionActive {
+                VStack(alignment: .leading, spacing: 4) {
+                    let usedCount = 2 - usageService.remainingFreeUsage
+                    let progress = Double(usedCount) / 2.0
+                    
+                    ProgressView(value: progress)
+                        .progressViewStyle(LinearProgressViewStyle(tint: usageService.remainingFreeUsage > 0 ? .green : .red))
+                        .scaleEffect(x: 1, y: 1.5, anchor: .center)
+                    
+                    if usageService.remainingFreeUsage == 0 {
+                        Text("무료 체험이 완료되었습니다. 프리미엄으로 업그레이드하여 계속 이용하세요!")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    } else {
+                        Text("텍스트 카드뉴스 \(usedCount)/2회 사용됨")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(
+            LinearGradient(
+                gradient: Gradient(colors: usageService.isSubscriptionActive ? 
+                    [Color.orange.opacity(0.1), Color.yellow.opacity(0.1)] :
+                    [Color.green.opacity(0.1), Color.blue.opacity(0.1)]
+                ),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(usageService.isSubscriptionActive ? Color.orange.opacity(0.3) : Color.green.opacity(0.3), lineWidth: 1)
+        )
     }
     
     // MARK: - Recent Summaries Section
