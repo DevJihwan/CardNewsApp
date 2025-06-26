@@ -98,17 +98,24 @@ class ClaudeAPIService: ObservableObject {
         // 3. 응답 파싱 및 카드 생성
         let cards = try parseCardsFromResponse(response.content.first?.text ?? "", config: config)
         
-        // 4. 결과 생성
+        // 4. 카드 수 검증 및 수정
+        let validatedCards = validateAndFixCardCount(cards: cards, expectedCount: config.cardCount.rawValue)
+        
+        // 5. 결과 생성
         let result = SummaryResult(
             id: UUID().uuidString,
             config: config,
             originalDocument: document.originalDocument,
-            cards: cards,
+            cards: validatedCards,
             createdAt: Date(),
             tokensUsed: response.usage.inputTokens + response.usage.outputTokens
         )
         
-        print("🎉 [ClaudeAPIService] 카드뉴스 생성 완료: \(cards.count)장")
+        print("🎉 [ClaudeAPIService] 카드뉴스 생성 완료: \(validatedCards.count)장 (목표: \(config.cardCount.rawValue)장)")
+        
+        // 6. 결과 저장
+        saveSummaryResult(result)
+        
         return result
     }
     
@@ -131,13 +138,14 @@ class ClaudeAPIService: ObservableObject {
         let toneInstruction = generateToneInstruction(config.tone)
         
         return """
-        당신은 전문적인 카드뉴스 제작 전문가입니다. 복잡한 문서를 \(config.cardCount.rawValue)장의 카드뉴스로 요약하는 것이 당신의 임무입니다.
+        당신은 전문적인 카드뉴스 제작 전문가입니다. 복잡한 문서를 정확히 \(config.cardCount.rawValue)장의 카드뉴스로 요약하는 것이 당신의 임무입니다.
         
-        ## 기본 원칙:
-        1. 정확히 \(config.cardCount.rawValue)장의 카드로 구성해주세요
-        2. 각 카드는 독립적으로 이해 가능해야 합니다
-        3. 전체적인 스토리 흐름이 자연스러워야 합니다
-        4. 핵심 내용을 놓치지 않으면서도 쉽게 이해할 수 있게 만들어주세요
+        ## 🚨 핵심 규칙 (반드시 준수):
+        1. **카드 수**: 정확히 \(config.cardCount.rawValue)장의 카드로 구성해주세요 (더도 적도 말고 정확히 \(config.cardCount.rawValue)장)
+        2. **카드 번호**: 1번부터 \(config.cardCount.rawValue)번까지 순서대로 번호를 매겨주세요
+        3. **독립성**: 각 카드는 독립적으로 이해 가능해야 합니다
+        4. **연결성**: 전체적인 스토리 흐름이 자연스러워야 합니다
+        5. **완성도**: 핵심 내용을 놓치지 않으면서도 쉽게 이해할 수 있게 만들어주세요
         
         ## 언어 설정:
         \(languageInstruction)
@@ -148,8 +156,8 @@ class ClaudeAPIService: ObservableObject {
         ## 톤 설정:
         \(toneInstruction)
         
-        ## 출력 형식:
-        반드시 다음 JSON 형식으로 응답해주세요:
+        ## 🎯 출력 형식 (반드시 준수):
+        반드시 다음 JSON 형식으로 정확히 \(config.cardCount.rawValue)개의 카드를 포함하여 응답해주세요:
         
         ```json
         {
@@ -161,10 +169,21 @@ class ClaudeAPIService: ObservableObject {
               "imagePrompt": "이미지 생성을 위한 프롬프트 (선택사항)",
               "backgroundColor": "#FFFFFF",
               "textColor": "#000000"
+            },
+            {
+              "cardNumber": 2,
+              "title": "카드 제목",
+              "content": "카드 내용",
+              "imagePrompt": "이미지 생성을 위한 프롬프트 (선택사항)",
+              "backgroundColor": "#FFFFFF",
+              "textColor": "#000000"
             }
+            // ... 정확히 \(config.cardCount.rawValue)개까지
           ]
         }
         ```
+        
+        ⚠️ 중요: cards 배열에는 정확히 \(config.cardCount.rawValue)개의 카드 객체가 포함되어야 합니다.
         """
     }
     
@@ -234,9 +253,11 @@ class ClaudeAPIService: ObservableObject {
         **내용:**
         \(contentPreview)
         
-        위 문서를 \(config.cardCount.rawValue)장의 카드뉴스로 요약해주세요.
+        위 문서를 정확히 \(config.cardCount.rawValue)장의 카드뉴스로 요약해주세요.
         각 카드가 전체 스토리의 일부가 되도록 논리적으로 구성하고, 
         독자가 쉽게 이해하고 기억할 수 있도록 만들어주세요.
+        
+        🎯 목표: 정확히 \(config.cardCount.rawValue)장의 카드 생성
         """
     }
     
@@ -360,13 +381,88 @@ class ClaudeAPIService: ObservableObject {
                 )
             }
             
-            print("🎉 [ClaudeAPIService] \(cards.count)장의 카드 파싱 완료")
+            print("🎉 [ClaudeAPIService] \(cards.count)장의 카드 파싱 완료 (목표: \(config.cardCount.rawValue)장)")
             return cards
             
         } catch {
             print("❌ [ClaudeAPIService] JSON 파싱 실패: \(error)")
             print("📝 [ClaudeAPIService] 파싱 시도한 JSON: \(jsonText)")
             throw ClaudeAPIError.decodingError(error)
+        }
+    }
+    
+    // MARK: - Card Count Validation
+    
+    private func validateAndFixCardCount(cards: [SummaryResult.CardContent], expectedCount: Int) -> [SummaryResult.CardContent] {
+        print("🔍 [ClaudeAPIService] 카드 수 검증: \(cards.count)개 (목표: \(expectedCount)개)")
+        
+        if cards.count == expectedCount {
+            print("✅ [ClaudeAPIService] 카드 수 정확함")
+            return cards
+        }
+        
+        // 카드가 부족한 경우
+        if cards.count < expectedCount {
+            print("⚠️ [ClaudeAPIService] 카드 부족 - 추가 생성")
+            var fixedCards = cards
+            
+            for i in cards.count..<expectedCount {
+                let additionalCard = SummaryResult.CardContent(
+                    cardNumber: i + 1,
+                    title: "추가 요약 \(i + 1)",
+                    content: "이 카드는 자동으로 생성된 추가 요약입니다.",
+                    imagePrompt: nil,
+                    backgroundColor: "#FFFFFF",
+                    textColor: "#000000"
+                )
+                fixedCards.append(additionalCard)
+            }
+            
+            return fixedCards
+        }
+        
+        // 카드가 초과된 경우
+        if cards.count > expectedCount {
+            print("⚠️ [ClaudeAPIService] 카드 초과 - 잘라내기")
+            return Array(cards.prefix(expectedCount))
+        }
+        
+        return cards
+    }
+    
+    // MARK: - Summary Storage
+    
+    private func saveSummaryResult(_ result: SummaryResult) {
+        // UserDefaults를 사용한 간단한 저장 (추후 CoreData로 업그레이드)
+        var summaries = loadSavedSummaries()
+        summaries.insert(result, at: 0) // 최신 항목을 앞에 추가
+        
+        // 최대 10개까지만 저장
+        if summaries.count > 10 {
+            summaries = Array(summaries.prefix(10))
+        }
+        
+        do {
+            let data = try JSONEncoder().encode(summaries.map { EncodableSummaryResult(from: $0) })
+            UserDefaults.standard.set(data, forKey: "saved_summaries")
+            print("✅ [ClaudeAPIService] 요약 결과 저장 완료")
+        } catch {
+            print("❌ [ClaudeAPIService] 요약 결과 저장 실패: \(error)")
+        }
+    }
+    
+    // 저장된 요약 로드
+    func loadSavedSummaries() -> [SummaryResult] {
+        guard let data = UserDefaults.standard.data(forKey: "saved_summaries") else {
+            return []
+        }
+        
+        do {
+            let encodableSummaries = try JSONDecoder().decode([EncodableSummaryResult].self, from: data)
+            return encodableSummaries.map { $0.toSummaryResult() }
+        } catch {
+            print("❌ [ClaudeAPIService] 저장된 요약 로드 실패: \(error)")
+            return []
         }
     }
     
@@ -396,5 +492,90 @@ class ClaudeAPIService: ObservableObject {
     func estimateTokens(for text: String) -> Int {
         // 대략적인 토큰 계산 (1토큰 ≈ 4글자)
         return text.count / 4
+    }
+}
+
+// MARK: - Encodable Helper for Storage
+
+private struct EncodableSummaryResult: Codable {
+    let id: String
+    let cardCount: Int
+    let outputStyle: String
+    let language: String
+    let tone: String
+    let fileName: String
+    let fileSize: Int
+    let fileType: String
+    let uploadedAt: Date
+    let cards: [EncodableCardContent]
+    let createdAt: Date
+    let tokensUsed: Int
+    
+    init(from result: SummaryResult) {
+        self.id = result.id
+        self.cardCount = result.config.cardCount.rawValue
+        self.outputStyle = result.config.outputStyle.rawValue
+        self.language = result.config.language.rawValue
+        self.tone = result.config.tone.rawValue
+        self.fileName = result.originalDocument.fileName
+        self.fileSize = result.originalDocument.fileSize
+        self.fileType = result.originalDocument.fileType
+        self.uploadedAt = result.originalDocument.uploadedAt
+        self.cards = result.cards.map { EncodableCardContent(from: $0) }
+        self.createdAt = result.createdAt
+        self.tokensUsed = result.tokensUsed
+    }
+    
+    func toSummaryResult() -> SummaryResult {
+        let documentInfo = DocumentInfo(
+            fileName: fileName,
+            fileSize: fileSize,
+            fileType: fileType
+        )
+        
+        let config = SummaryConfig(
+            cardCount: SummaryConfig.CardCount(rawValue: cardCount) ?? .four,
+            outputStyle: SummaryConfig.OutputStyle(rawValue: outputStyle) ?? .text,
+            language: SummaryConfig.SummaryLanguage(rawValue: language) ?? .korean,
+            tone: SummaryConfig.SummaryTone(rawValue: tone) ?? .friendly
+        )
+        
+        return SummaryResult(
+            id: id,
+            config: config,
+            originalDocument: documentInfo,
+            cards: cards.map { $0.toCardContent() },
+            createdAt: createdAt,
+            tokensUsed: tokensUsed
+        )
+    }
+}
+
+private struct EncodableCardContent: Codable {
+    let cardNumber: Int
+    let title: String
+    let content: String
+    let imagePrompt: String?
+    let backgroundColor: String?
+    let textColor: String?
+    
+    init(from card: SummaryResult.CardContent) {
+        self.cardNumber = card.cardNumber
+        self.title = card.title
+        self.content = card.content
+        self.imagePrompt = card.imagePrompt
+        self.backgroundColor = card.backgroundColor
+        self.textColor = card.textColor
+    }
+    
+    func toCardContent() -> SummaryResult.CardContent {
+        return SummaryResult.CardContent(
+            cardNumber: cardNumber,
+            title: title,
+            content: content,
+            imagePrompt: imagePrompt,
+            backgroundColor: backgroundColor,
+            textColor: textColor
+        )
     }
 }
