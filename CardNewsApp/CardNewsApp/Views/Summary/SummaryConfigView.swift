@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SummaryConfigView: View {
     @StateObject private var claudeService = ClaudeAPIService()
+    @StateObject private var usageService = UsageTrackingService()
     @Environment(\.dismiss) private var dismiss
     @State private var summaryConfig = SummaryConfig(
         cardCount: .four,
@@ -14,6 +15,8 @@ struct SummaryConfigView: View {
     @State private var generatedSummary: SummaryResult?
     @State private var errorMessage: String?
     @State private var showError = false
+    @State private var showPaywall = false
+    @State private var paywallTrigger: PaywallTrigger = .freeUsageExhausted
     
     let processedDocument: ProcessedDocument
     
@@ -25,6 +28,9 @@ struct SummaryConfigView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
+                    // 사용량 상태 표시
+                    usageStatusSection
+                    
                     // 상단 문서 정보
                     documentInfoSection
                     
@@ -56,6 +62,16 @@ struct SummaryConfigView: View {
                         dismiss()
                     }
                 }
+                
+                if usageService.isSubscriptionActive {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("💎 \(usageService.currentSubscriptionTier.displayName)") {
+                            // TODO: 구독 관리 화면
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    }
+                }
             }
             .alert("오류", isPresented: $showError) {
                 Button("확인") {
@@ -74,10 +90,90 @@ struct SummaryConfigView: View {
                         }
                 }
             }
+            .sheet(isPresented: $showPaywall) {
+                PaywallView(triggerReason: paywallTrigger)
+                    .onDisappear {
+                        // Paywall이 닫힐 때 사용량 상태 새로고침
+                        objectWillChange.send()
+                    }
+            }
             .onAppear {
                 setupClaudeAPI()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .subscriptionStatusChanged)) { _ in
+                print("💎 [SummaryConfigView] 구독 상태 변경 알림 수신")
+                objectWillChange.send()
+            }
         }
+    }
+    
+    // MARK: - Usage Status Section
+    private var usageStatusSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: usageService.isSubscriptionActive ? "crown.fill" : "gift.fill")
+                    .foregroundColor(usageService.isSubscriptionActive ? .orange : .green)
+                Text(usageService.isSubscriptionActive ? "프리미엄 구독" : "무료 체험")
+                    .font(.headline)
+                Spacer()
+                
+                if !usageService.isSubscriptionActive {
+                    Button("업그레이드") {
+                        paywallTrigger = .upgradePrompt
+                        showPaywall = true
+                    }
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                }
+            }
+            
+            if usageService.isSubscriptionActive {
+                // 구독자 상태
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("\(usageService.currentSubscriptionTier.displayName) 플랜")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        Spacer()
+                        Text("무제한 이용 가능")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                    
+                    let stats = usageService.getUsageStats()
+                    Text("이번 달 사용량: 텍스트 \(stats.textCount)개, 이미지 \(stats.imageCount)개")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            } else {
+                // 무료 사용자 상태
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("남은 무료 횟수")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        Spacer()
+                        Text("\(usageService.remainingFreeUsage)/2회")
+                            .font(.subheadline)
+                            .fontWeight(.bold)
+                            .foregroundColor(usageService.remainingFreeUsage > 0 ? .green : .red)
+                    }
+                    
+                    if usageService.remainingFreeUsage == 0 {
+                        Text("무료 체험이 완료되었습니다. 계속 이용하려면 구독이 필요합니다.")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    } else {
+                        Text("무료 체험 중입니다. 텍스트 카드뉴스만 생성 가능합니다.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(usageService.isSubscriptionActive ? Color.orange.opacity(0.1) : Color.green.opacity(0.1))
+        .cornerRadius(12)
     }
     
     // MARK: - Document Info Section
@@ -162,6 +258,13 @@ struct SummaryConfigView: View {
             VStack(spacing: 12) {
                 ForEach(SummaryConfig.OutputStyle.allCases, id: \.self) { style in
                     Button(action: {
+                        // 이미지 스타일 선택 시 권한 확인
+                        if style == .image && !usageService.canCreateImageCardNews() {
+                            paywallTrigger = .imageGenerationRequested
+                            showPaywall = true
+                            return
+                        }
+                        
                         summaryConfig = SummaryConfig(
                             cardCount: summaryConfig.cardCount,
                             outputStyle: style,
@@ -172,9 +275,23 @@ struct SummaryConfigView: View {
                     }) {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(style.displayName)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
+                                HStack {
+                                    Text(style.displayName)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    
+                                    if style == .image && !usageService.canCreateImageCardNews() {
+                                        Text("프리미엄")
+                                            .font(.caption)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.orange)
+                                            .cornerRadius(4)
+                                    }
+                                }
+                                
                                 Text(style.description)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -192,6 +309,7 @@ struct SummaryConfigView: View {
                         .padding()
                         .background(summaryConfig.outputStyle == style ? Color.blue.opacity(0.1) : Color(.systemGray6))
                         .cornerRadius(12)
+                        .opacity((style == .image && !usageService.canCreateImageCardNews()) ? 0.6 : 1.0)
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
@@ -300,10 +418,15 @@ struct SummaryConfigView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(isGeneratingSummary ? Color.gray : Color.blue)
+                .background(getGenerateButtonColor())
                 .cornerRadius(12)
             }
-            .disabled(isGeneratingSummary)
+            .disabled(isGeneratingSummary || !canGenerate())
+            
+            // 생성 불가능한 경우 안내 메시지
+            if !canGenerate() && !isGeneratingSummary {
+                usageLimitMessage
+            }
             
             // 생성 진행 중일 때 설명 텍스트
             if isGeneratingSummary {
@@ -327,7 +450,53 @@ struct SummaryConfigView: View {
         }
     }
     
+    // MARK: - Usage Limit Message
+    private var usageLimitMessage: some View {
+        VStack(spacing: 8) {
+            if summaryConfig.outputStyle == .image && !usageService.canCreateImageCardNews() {
+                Text("이미지 카드뉴스는 프리미엄 구독자만 이용 가능합니다")
+                    .font(.subheadline)
+                    .foregroundColor(.orange)
+                    .multilineTextAlignment(.center)
+            } else if !usageService.canCreateTextCardNews() {
+                Text("무료 사용량을 모두 소진하셨습니다")
+                    .font(.subheadline)
+                    .foregroundColor(.red)
+                    .multilineTextAlignment(.center)
+                
+                Button("프리미엄 구독하기") {
+                    paywallTrigger = .freeUsageExhausted
+                    showPaywall = true
+                }
+                .font(.subheadline)
+                .foregroundColor(.blue)
+                .padding(.top, 4)
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(8)
+    }
+    
     // MARK: - Helper Methods
+    
+    private func canGenerate() -> Bool {
+        if summaryConfig.outputStyle == .image {
+            return usageService.canCreateImageCardNews()
+        } else {
+            return usageService.canCreateTextCardNews()
+        }
+    }
+    
+    private func getGenerateButtonColor() -> Color {
+        if isGeneratingSummary {
+            return Color.gray
+        } else if canGenerate() {
+            return Color.blue
+        } else {
+            return Color.gray
+        }
+    }
     
     private func setupClaudeAPI() {
         // Info.plist에서 이미 API 키가 로드되었으므로 추가 설정 불필요
@@ -368,7 +537,21 @@ struct SummaryConfigView: View {
     private func generateSummary() {
         print("🔍 [SummaryConfigView] 카드뉴스 생성 시작")
         print("🔧 [SummaryConfigView] 설정: \(summaryConfig.cardCount.displayName), \(summaryConfig.outputStyle.displayName), \(summaryConfig.language.displayName), \(summaryConfig.tone.displayName)")
-        print("🔧 [SummaryConfigView] API 설정 상태: \(claudeService.isConfigured)")
+        
+        // 사용량 제한 확인
+        if summaryConfig.outputStyle == .image && !usageService.canCreateImageCardNews() {
+            print("❌ [SummaryConfigView] 이미지 카드뉴스 권한 없음")
+            paywallTrigger = .imageGenerationRequested
+            showPaywall = true
+            return
+        }
+        
+        if !usageService.canCreateTextCardNews() {
+            print("❌ [SummaryConfigView] 텍스트 카드뉴스 권한 없음")
+            paywallTrigger = .freeUsageExhausted
+            showPaywall = true
+            return
+        }
         
         isGeneratingSummary = true
         
@@ -380,6 +563,13 @@ struct SummaryConfigView: View {
                 )
                 
                 await MainActor.run {
+                    // 사용량 기록
+                    if summaryConfig.outputStyle == .image {
+                        usageService.recordImageCardNewsUsage()
+                    } else {
+                        usageService.recordTextCardNewsUsage()
+                    }
+                    
                     generatedSummary = result
                     showSummaryResult = true
                     isGeneratingSummary = false
