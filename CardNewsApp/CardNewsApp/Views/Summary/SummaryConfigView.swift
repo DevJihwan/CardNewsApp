@@ -118,7 +118,7 @@ struct SummaryConfigView: View {
             HStack {
                 Image(systemName: usageService.isSubscriptionActive ? "crown.fill" : "gift.fill")
                     .foregroundColor(usageService.isSubscriptionActive ? .orange : .green)
-                Text(usageService.isSubscriptionActive ? "프리미엄 구독" : "무료 체험")
+                Text(getSubscriptionStatusText())
                     .font(.headline)
                 Spacer()
                 
@@ -140,15 +140,21 @@ struct SummaryConfigView: View {
                             .font(.subheadline)
                             .fontWeight(.medium)
                         Spacer()
-                        Text("무제한 이용 가능")
+                        Text(getSubscriptionStatusMessage())
                             .font(.caption)
                             .foregroundColor(.green)
                     }
                     
                     let stats = usageService.getUsageStats()
-                    Text("이번 달 사용량: 텍스트 \(stats.textCount)개, 이미지 \(stats.imageCount)개")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    if usageService.currentSubscriptionTier == .basic {
+                        Text("이번 달 사용량: 텍스트 \(stats.textCount)/20개")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("이번 달 사용량: 텍스트 \(stats.textCount)개, 이미지 \(stats.imageCount)개")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             } else {
                 // 무료 사용자 상태
@@ -262,11 +268,15 @@ struct SummaryConfigView: View {
             
             VStack(spacing: 12) {
                 ForEach(SummaryConfig.OutputStyle.allCases, id: \.self) { style in
+                    let isEnabled = isStyleEnabled(style)
+                    
                     Button(action: {
-                        // 이미지 스타일 선택 시 권한 확인
-                        if style == .image && !usageService.canCreateImageCardNews() {
-                            paywallTrigger = .imageGenerationRequested
-                            showPaywall = true
+                        if !isEnabled {
+                            // 사용할 수 없는 스타일 선택 시 안내 메시지
+                            if style == .image {
+                                paywallTrigger = .imageGenerationRequested
+                                showPaywall = true
+                            }
                             return
                         }
                         
@@ -284,39 +294,51 @@ struct SummaryConfigView: View {
                                     Text(style.displayName)
                                         .font(.subheadline)
                                         .fontWeight(.medium)
+                                        .foregroundColor(isEnabled ? .primary : .secondary)
                                     
-                                    if style == .image && !usageService.canCreateImageCardNews() {
-                                        Text("프리미엄")
+                                    if !isEnabled {
+                                        Text(getStyleRequirement(style))
                                             .font(.caption)
                                             .fontWeight(.bold)
                                             .foregroundColor(.white)
                                             .padding(.horizontal, 6)
                                             .padding(.vertical, 2)
-                                            .background(Color.orange)
+                                            .background(getStyleRequirementColor(style))
                                             .cornerRadius(4)
                                     }
                                 }
                                 
                                 Text(style.description)
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(isEnabled ? .secondary : .secondary.opacity(0.6))
                             }
                             Spacer()
                             
-                            if summaryConfig.outputStyle == style {
+                            if summaryConfig.outputStyle == style && isEnabled {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(.blue)
                             } else {
                                 Image(systemName: "circle")
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(isEnabled ? .gray : .gray.opacity(0.5))
                             }
                         }
                         .padding()
-                        .background(summaryConfig.outputStyle == style ? Color.blue.opacity(0.1) : Color(.systemGray6))
+                        .background(
+                            Group {
+                                if summaryConfig.outputStyle == style && isEnabled {
+                                    Color.blue.opacity(0.1)
+                                } else if isEnabled {
+                                    Color(.systemGray6)
+                                } else {
+                                    Color(.systemGray6).opacity(0.5)
+                                }
+                            }
+                        )
                         .cornerRadius(12)
-                        .opacity((style == .image && !usageService.canCreateImageCardNews()) ? 0.6 : 1.0)
+                        .opacity(isEnabled ? 1.0 : 0.6)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .disabled(!isEnabled)
                 }
             }
         }
@@ -459,7 +481,7 @@ struct SummaryConfigView: View {
     private var usageLimitMessage: some View {
         VStack(spacing: 8) {
             if summaryConfig.outputStyle == .image && !usageService.canCreateImageCardNews() {
-                Text("이미지 카드뉴스는 프리미엄 구독자만 이용 가능합니다")
+                Text("이미지 카드뉴스는 Pro 플랜 이상에서 이용 가능합니다")
                     .font(.subheadline)
                     .foregroundColor(.orange)
                     .multilineTextAlignment(.center)
@@ -469,7 +491,7 @@ struct SummaryConfigView: View {
                     .foregroundColor(.red)
                     .multilineTextAlignment(.center)
                 
-                Button("프리미엄 구독하기") {
+                Button("Basic 플랜 구독하기") {
                     paywallTrigger = .freeUsageExhausted
                     showPaywall = true
                 }
@@ -484,6 +506,71 @@ struct SummaryConfigView: View {
     }
     
     // MARK: - Helper Methods
+    
+    // 구독 상태에 따른 정확한 텍스트 반환
+    private func getSubscriptionStatusText() -> String {
+        if usageService.isSubscriptionActive {
+            switch usageService.currentSubscriptionTier {
+            case .basic:
+                return "Basic 구독"
+            case .pro:
+                return "Pro 구독"
+            case .premium:
+                return "Premium 구독"
+            default:
+                return "구독"
+            }
+        } else {
+            return "무료 체험"
+        }
+    }
+    
+    private func getSubscriptionStatusMessage() -> String {
+        switch usageService.currentSubscriptionTier {
+        case .basic:
+            return "월 20개 텍스트 이용"
+        case .pro, .premium:
+            return "무제한 이용 가능"
+        default:
+            return ""
+        }
+    }
+    
+    // 스타일이 활성화되어 있는지 확인
+    private func isStyleEnabled(_ style: SummaryConfig.OutputStyle) -> Bool {
+        switch style {
+        case .text:
+            return true // 텍스트는 항상 사용 가능
+        case .webtoon:
+            return false // 웹툰 스타일은 현재 비활성화
+        case .image:
+            return false // 이미지 스타일은 현재 비활성화 (Pro 플랜도 없으므로)
+        }
+    }
+    
+    // 스타일 제한 요구사항 텍스트
+    private func getStyleRequirement(_ style: SummaryConfig.OutputStyle) -> String {
+        switch style {
+        case .webtoon:
+            return "준비 중"
+        case .image:
+            return "Pro 플랜"
+        case .text:
+            return ""
+        }
+    }
+    
+    // 스타일 제한 요구사항 색상
+    private func getStyleRequirementColor(_ style: SummaryConfig.OutputStyle) -> Color {
+        switch style {
+        case .webtoon:
+            return Color.gray
+        case .image:
+            return Color.orange
+        case .text:
+            return Color.clear
+        }
+    }
     
     private func canGenerate() -> Bool {
         if summaryConfig.outputStyle == .image {
