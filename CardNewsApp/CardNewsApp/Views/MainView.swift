@@ -175,7 +175,7 @@ struct MainView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .subscriptionStatusChanged)) { _ in
                 print("💎 [MainView] 구독 상태 변경 알림 수신")
-                objectWillChange.send()
+                // SwiftUI will automatically update the view when @StateObject properties change
             }
             .refreshable {
                 loadRecentSummaries()
