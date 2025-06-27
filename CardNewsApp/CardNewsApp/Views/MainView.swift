@@ -251,11 +251,11 @@ struct MainView: View {
                     .font(.title2)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    // 구독 상태 텍스트를 버튼으로 변경
+                    // 구독 상태에 따른 정확한 표시
                     Button(action: {
                         showPaywall = true
                     }) {
-                        Text(usageService.isSubscriptionActive ? "프리미엄 구독자" : "무료 체험")
+                        Text(getSubscriptionStatusText())
                             .font(.headline)
                             .foregroundColor(.primary)
                     }
@@ -447,6 +447,24 @@ struct MainView: View {
     }
     
     // MARK: - Helper Methods
+    
+    // 구독 상태에 따른 정확한 텍스트 반환
+    private func getSubscriptionStatusText() -> String {
+        if usageService.isSubscriptionActive {
+            switch usageService.currentSubscriptionTier {
+            case .basic:
+                return "Basic 구독자"
+            case .pro:
+                return "Pro 구독자"
+            case .premium:
+                return "Premium 구독자"
+            default:
+                return "구독자"
+            }
+        } else {
+            return "무료 체험"
+        }
+    }
     
     // 🔧 안전한 파일 업로드 모달 열기
     private func openFileUpload() {
