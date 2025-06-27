@@ -101,6 +101,9 @@ struct MainView: View {
                         )
                     }
                     
+                    // 테스트 버튼들 (개발용)
+                    testButtonsSection
+                    
                     // 최근 요약 목록
                     recentSummariesSection
                     
@@ -110,13 +113,19 @@ struct MainView: View {
             }
             .navigationTitle("CardNews")
             .toolbar {
-                if usageService.isSubscriptionActive {
-                    ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if usageService.isSubscriptionActive {
                         Button("💎 \(usageService.currentSubscriptionTier.displayName)") {
-                            // TODO: 구독 관리 화면
+                            showPaywall = true
                         }
                         .font(.caption)
                         .foregroundColor(.orange)
+                    } else {
+                        Button("💎 구독") {
+                            showPaywall = true
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
                     }
                 }
             }
@@ -183,6 +192,56 @@ struct MainView: View {
         }
     }
     
+    // MARK: - Test Buttons Section (개발용)
+    private var testButtonsSection: some View {
+        VStack(spacing: 12) {
+            Text("테스트 기능")
+                .font(.headline)
+                .foregroundColor(.secondary)
+            
+            HStack(spacing: 12) {
+                // PaywallView 테스트 버튼
+                Button("구독 화면 보기") {
+                    showPaywall = true
+                }
+                .font(.caption)
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.purple)
+                .cornerRadius(8)
+                
+                // 무료 사용량 리셋 버튼
+                Button("무료 사용량 리셋") {
+                    usageService.resetFreeUsage()
+                }
+                .font(.caption)
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.orange)
+                .cornerRadius(8)
+                
+                // 구독 상태 토글 버튼
+                Button(usageService.isSubscriptionActive ? "구독 해제" : "구독 활성화") {
+                    usageService.updateSubscription(
+                        isActive: !usageService.isSubscriptionActive,
+                        tier: usageService.isSubscriptionActive ? .none : .basic
+                    )
+                }
+                .font(.caption)
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(usageService.isSubscriptionActive ? Color.red : Color.green)
+                .cornerRadius(8)
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6).opacity(0.5))
+        .cornerRadius(12)
+    }
+    
     // MARK: - Usage Status Card
     private var usageStatusCard: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -192,12 +251,18 @@ struct MainView: View {
                     .font(.title2)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(usageService.isSubscriptionActive ? "프리미엄 구독자" : "무료 체험")
-                        .font(.headline)
-                        .foregroundColor(.primary)
+                    // 구독 상태 텍스트를 버튼으로 변경
+                    Button(action: {
+                        showPaywall = true
+                    }) {
+                        Text(usageService.isSubscriptionActive ? "프리미엄 구독자" : "무료 체험")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                     
                     if usageService.isSubscriptionActive {
-                        Text("\(usageService.currentSubscriptionTier.displayName) 플랜 • 무제한 이용")
+                        Text("\(usageService.currentSubscriptionTier.displayName) 플랜 • 월 20개 카드뉴스")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     } else {
@@ -234,7 +299,7 @@ struct MainView: View {
                         .scaleEffect(x: 1, y: 1.5, anchor: .center)
                     
                     if usageService.remainingFreeUsage == 0 {
-                        Text("무료 체험이 완료되었습니다. 프리미엄으로 업그레이드하여 계속 이용하세요!")
+                        Text("무료 체험이 완료되었습니다. Basic 플랜으로 업그레이드하여 계속 이용하세요!")
                             .font(.caption)
                             .foregroundColor(.red)
                     } else {
