@@ -3,7 +3,7 @@ import SwiftUI
 struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var usageService = UsageTrackingService()
-    @State private var selectedTier: SubscriptionTier = .pro
+    @State private var selectedTier: SubscriptionTier = .basic
     @State private var showingPurchase = false
     @State private var isProcessingPurchase = false
     
@@ -84,7 +84,7 @@ struct PaywallView: View {
     // MARK: - Benefits Section
     private var benefitsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("프리미엄의 혜택")
+            Text("Basic 플랜의 혜택")
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
@@ -94,26 +94,14 @@ struct PaywallView: View {
             ], spacing: 16) {
                 benefitCard(
                     icon: "rectangle.3.group.fill",
-                    title: "무제한 카드뉴스",
-                    description: "원하는 만큼 생성하세요"
-                )
-                
-                benefitCard(
-                    icon: "photo.fill",
-                    title: "AI 이미지 생성",
-                    description: "고품질 이미지 자동 생성"
+                    title: "월 20개 카드뉴스",
+                    description: "텍스트 카드뉴스 제작"
                 )
                 
                 benefitCard(
                     icon: "paintbrush.pointed.fill",
-                    title: "고급 스타일",
-                    description: "프리미엄 디자인 템플릿"
-                )
-                
-                benefitCard(
-                    icon: "doc.fill",
-                    title: "PDF 내보내기",
-                    description: "고해상도 PDF 저장"
+                    title: "모든 스타일",
+                    description: "다양한 디자인 템플릿"
                 )
                 
                 benefitCard(
@@ -123,9 +111,9 @@ struct PaywallView: View {
                 )
                 
                 benefitCard(
-                    icon: "headphones",
-                    title: "프리미엄 지원",
-                    description: "24/7 고객 지원"
+                    icon: "folder.fill",
+                    title: "무제한 히스토리",
+                    description: "모든 작업 저장"
                 )
             }
         }
@@ -138,9 +126,14 @@ struct PaywallView: View {
                 .font(.headline)
             
             VStack(spacing: 12) {
-                ForEach([SubscriptionTier.basic, .pro, .premium], id: \.self) { tier in
-                    subscriptionPlanCard(tier: tier)
-                }
+                // Basic 플랜 (활성화)
+                subscriptionPlanCard(tier: .basic, isEnabled: true)
+                
+                // Pro 플랜 (비활성화)
+                subscriptionPlanCard(tier: .pro, isEnabled: false)
+                
+                // Premium 플랜 (비활성화)
+                subscriptionPlanCard(tier: .premium, isEnabled: false)
             }
         }
     }
@@ -159,7 +152,7 @@ struct PaywallView: View {
                     } else {
                         Image(systemName: "crown.fill")
                     }
-                    Text(isProcessingPurchase ? "처리 중..." : "\\(selectedTier.monthlyPrice)/월로 시작하기")
+                    Text(isProcessingPurchase ? "처리 중..." : "\(selectedTier.monthlyPrice)/월로 시작하기")
                 }
                 .font(.headline)
                 .foregroundColor(.white)
@@ -197,8 +190,8 @@ struct PaywallView: View {
             
             VStack(alignment: .leading, spacing: 8) {
                 Text("• 2회 무료 카드뉴스 생성을 모두 사용하셨습니다")
-                Text("• 계속 사용하려면 프리미엄 구독이 필요합니다")
-                Text("• 구독 시 바로 무제한 이용 가능합니다")
+                Text("• 계속 사용하려면 Basic 구독이 필요합니다")
+                Text("• 구독 시 바로 월 20개 카드뉴스 이용 가능합니다")
             }
             .font(.subheadline)
             .foregroundColor(.secondary)
@@ -212,7 +205,7 @@ struct PaywallView: View {
     // MARK: - Footer Section
     private var footerSection: some View {
         VStack(spacing: 8) {
-            Text("구독을 통해 더 많은 기능을 이용하세요")
+            Text("Basic 구독으로 더 많은 기능을 이용하세요")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -266,10 +259,12 @@ struct PaywallView: View {
         .cornerRadius(12)
     }
     
-    private func subscriptionPlanCard(tier: SubscriptionTier) -> some View {
+    private func subscriptionPlanCard(tier: SubscriptionTier, isEnabled: Bool) -> some View {
         Button(action: {
-            selectedTier = tier
-            print("💰 [PaywallView] 플랜 선택: \\(tier.displayName)")
+            if isEnabled {
+                selectedTier = tier
+                print("💰 [PaywallView] 플랜 선택: \(tier.displayName)")
+            }
         }) {
             HStack {
                 VStack(alignment: .leading, spacing: 8) {
@@ -277,15 +272,25 @@ struct PaywallView: View {
                         Text(tier.displayName)
                             .font(.headline)
                             .fontWeight(.bold)
+                            .foregroundColor(isEnabled ? .primary : .secondary)
                         
-                        if tier == .pro {
-                            Text("인기")
+                        if tier == .basic && isEnabled {
+                            Text("사용 가능")
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 2)
-                                .background(Color.orange)
+                                .background(Color.green)
+                                .cornerRadius(8)
+                        } else if !isEnabled {
+                            Text("준비 중")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color.gray)
                                 .cornerRadius(8)
                         }
                         
@@ -295,32 +300,45 @@ struct PaywallView: View {
                     Text(tier.monthlyPrice)
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundColor(.blue)
+                        .foregroundColor(isEnabled ? .blue : .secondary)
                     
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("텍스트: \\(tier.textLimit)")
+                        Text("텍스트: \(tier.textLimit)")
                             .font(.subheadline)
-                        Text("이미지: \\(tier.imageLimit)")
+                            .foregroundColor(isEnabled ? .secondary : .secondary.opacity(0.6))
+                        Text("이미지: \(tier.imageLimit)")
                             .font(.subheadline)
+                            .foregroundColor(isEnabled ? .secondary : .secondary.opacity(0.6))
                     }
-                    .foregroundColor(.secondary)
                 }
                 
                 Spacer()
                 
-                Image(systemName: selectedTier == tier ? "checkmark.circle.fill" : "circle")
+                Image(systemName: selectedTier == tier && isEnabled ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
-                    .foregroundColor(selectedTier == tier ? .blue : .gray)
+                    .foregroundColor(selectedTier == tier && isEnabled ? .blue : .gray)
             }
             .padding()
-            .background(selectedTier == tier ? Color.blue.opacity(0.1) : Color(.systemGray6))
+            .background(
+                Group {
+                    if selectedTier == tier && isEnabled {
+                        Color.blue.opacity(0.1)
+                    } else if isEnabled {
+                        Color(.systemGray6)
+                    } else {
+                        Color(.systemGray6).opacity(0.5)
+                    }
+                }
+            )
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(selectedTier == tier ? Color.blue : Color.clear, lineWidth: 2)
+                    .stroke(selectedTier == tier && isEnabled ? Color.blue : Color.clear, lineWidth: 2)
             )
+            .opacity(isEnabled ? 1.0 : 0.6)
         }
         .buttonStyle(PlainButtonStyle())
+        .disabled(!isEnabled)
     }
     
     // MARK: - Helper Methods
@@ -341,25 +359,25 @@ struct PaywallView: View {
         case .freeUsageExhausted:
             return "무료 체험 완료"
         case .imageGenerationRequested:
-            return "이미지 카드뉴스는\\n프리미엄 기능입니다"
+            return "더 많은 기능이\n곧 출시됩니다"
         case .upgradePrompt:
-            return "더 많은 기능을\\n이용해보세요"
+            return "Basic 플랜으로\n시작해보세요"
         }
     }
     
     private func getHeaderDescription() -> String {
         switch triggerReason {
         case .freeUsageExhausted:
-            return "2회 무료 생성을 모두 사용하셨습니다.\\n계속 이용하려면 프리미엄 구독이 필요합니다."
+            return "2회 무료 생성을 모두 사용하셨습니다.\nBasic 플랜으로 월 20개 카드뉴스를 만들어보세요."
         case .imageGenerationRequested:
-            return "AI가 생성하는 고품질 이미지로\\n더욱 임팩트 있는 카드뉴스를 만들어보세요."
+            return "이미지 생성 기능은 곧 Pro 플랜과 함께 출시됩니다.\n지금은 Basic 플랜으로 텍스트 카드뉴스를 이용해보세요."
         case .upgradePrompt:
-            return "무제한 생성, AI 이미지, 고급 스타일 등\\n프리미엄 기능을 경험해보세요."
+            return "월 20개 텍스트 카드뉴스와 다양한 스타일로\n더욱 풍성한 콘텐츠를 만들어보세요."
         }
     }
     
     private func handleSubscription() {
-        print("💰 [PaywallView] 구독 처리 시작: \\(selectedTier.displayName)")
+        print("💰 [PaywallView] 구독 처리 시작: \(selectedTier.displayName)")
         isProcessingPurchase = true
         
         // TODO: StoreKit 2 구독 처리
@@ -373,7 +391,7 @@ struct PaywallView: View {
             // 구독 성공 알림
             NotificationCenter.default.post(name: .subscriptionStatusChanged, object: nil)
             
-            print("✅ [PaywallView] 구독 완료: \\(selectedTier.displayName)")
+            print("✅ [PaywallView] 구독 완료: \(selectedTier.displayName)")
             dismiss()
         }
     }
