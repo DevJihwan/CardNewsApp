@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SummaryConfigView: View {
     @StateObject private var claudeService = ClaudeAPIService()
-    @StateObject private var usageService = UsageTrackingService()
+    @ObservedObject private var usageService = UsageTrackingService.shared
     @Environment(\.dismiss) private var dismiss
     @State private var summaryConfig = SummaryConfig(
         cardCount: .four,
@@ -655,7 +655,7 @@ struct SummaryConfigView: View {
                 )
                 
                 await MainActor.run {
-                    // 사용량 기록
+                    // 🎯 FIXED: 사용량 기록 - Singleton 사용으로 메인 화면과 동일한 인스턴스
                     if summaryConfig.outputStyle == .image {
                         usageService.recordImageCardNewsUsage()
                     } else {
@@ -666,6 +666,7 @@ struct SummaryConfigView: View {
                     showSummaryResult = true
                     isGeneratingSummary = false
                     print("🎉 [SummaryConfigView] 카드뉴스 생성 완료! 카드 수: \(result.cards.count)장")
+                    print("📊 [SummaryConfigView] 사용량 기록 완료 - 남은 무료 횟수: \(usageService.remainingFreeUsage)회")
                 }
                 
             } catch {
