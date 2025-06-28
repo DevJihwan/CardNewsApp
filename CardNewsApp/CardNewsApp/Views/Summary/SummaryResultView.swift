@@ -1,10 +1,13 @@
 import SwiftUI
+import Photos
 
 struct SummaryResultView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var currentCardIndex = 0
     @State private var showShareSheet = false
     @State private var showSaveConfirmation = false
+    @State private var saveError: String?
+    @State private var showSaveError = false
     
     let summaryResult: SummaryResult
     
@@ -77,6 +80,11 @@ struct SummaryResultView: View {
                 Button("확인") { }
             } message: {
                 Text("카드뉴스가 갤러리에 저장되었습니다.")
+            }
+            .alert("저장 실패", isPresented: $showSaveError) {
+                Button("확인") { }
+            } message: {
+                Text(saveError ?? "갤러리 저장 중 오류가 발생했습니다.")
             }
             .onAppear {
                 print("🔍 [SummaryResultView] 화면 표시됨")
@@ -262,9 +270,72 @@ struct SummaryResultView: View {
     }
     
     private func saveToGallery() {
-        // TODO: 카드를 이미지로 렌더링하여 갤러리에 저장
-        print("🔍 [SummaryResultView] 갤러리 저장 기능 (구현 예정)")
-        showSaveConfirmation = true
+        print("🔍 [SummaryResultView] 갤러리 저장 시작")
+        
+        // 사진 권한 확인
+        let authStatus = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+        
+        switch authStatus {
+        case .authorized, .limited:
+            performSaveToGallery()
+        case .denied, .restricted:
+            saveError = "사진 라이브러리 접근 권한이 필요합니다. 설정에서 권한을 허용해주세요."
+            showSaveError = true
+        case .notDetermined:
+            PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+                DispatchQueue.main.async {
+                    if status == .authorized || status == .limited {
+                        self.performSaveToGallery()
+                    } else {
+                        self.saveError = "사진 라이브러리 접근 권한이 거부되었습니다."
+                        self.showSaveError = true
+                    }
+                }
+            }
+        @unknown default:
+            saveError = "알 수 없는 권한 상태입니다."
+            showSaveError = true
+        }
+    }
+    
+    private func performSaveToGallery() {
+        // 현재 카드를 이미지로 변환하여 저장
+        guard currentCardIndex < summaryResult.cards.count else {
+            saveError = "저장할 카드를 찾을 수 없습니다."
+            showSaveError = true
+            return
+        }
+        
+        let card = summaryResult.cards[currentCardIndex]
+        
+        // CardView를 이미지로 렌더링
+        let cardView = CardView(card: card, config: summaryResult.config)
+            .frame(width: 350, height: 600) // 카드 크기 고정
+        
+        let renderer = ImageRenderer(content: cardView)
+        renderer.scale = 3.0 // 고해상도
+        
+        guard let uiImage = renderer.uiImage else {
+            saveError = "이미지 생성에 실패했습니다."
+            showSaveError = true
+            return
+        }
+        
+        // 사진 라이브러리에 저장
+        PHPhotoLibrary.shared().performChanges({
+            PHAssetChangeRequest.creationRequestForAsset(from: uiImage)
+        }) { [self] success, error in
+            DispatchQueue.main.async {
+                if success {
+                    print("✅ [SummaryResultView] 카드 \(currentCardIndex + 1) 갤러리 저장 성공")
+                    showSaveConfirmation = true
+                } else {
+                    print("❌ [SummaryResultView] 갤러리 저장 실패: \(error?.localizedDescription ?? "알 수 없는 오류")")
+                    saveError = error?.localizedDescription ?? "이미지 저장에 실패했습니다."
+                    showSaveError = true
+                }
+            }
+        }
     }
     
     private func exportAsPDF() {
