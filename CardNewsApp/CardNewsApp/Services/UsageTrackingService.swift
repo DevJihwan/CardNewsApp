@@ -1,7 +1,10 @@
 import Foundation
 
-/// 사용량 추적 및 구독 제한 관리 서비스
+/// 사용량 추적 및 구독 제한 관리 서비스 (Singleton)
 class UsageTrackingService: ObservableObject {
+    
+    // MARK: - Singleton
+    static let shared = UsageTrackingService()
     
     // MARK: - Published Properties
     @Published var remainingFreeUsage: Int = 0
@@ -25,10 +28,10 @@ class UsageTrackingService: ObservableObject {
     }
     
     // MARK: - Initialization
-    init() {
+    private init() {
         loadUsageData()
         checkMonthlyReset()
-        print("🔍 [UsageTrackingService] 초기화 완료")
+        print("🔍 [UsageTrackingService] Singleton 초기화 완료")
         print("📊 [UsageTrackingService] 남은 무료 사용: \(remainingFreeUsage)회")
         print("💎 [UsageTrackingService] 구독 상태: \(isSubscriptionActive ? "활성" : "비활성")")
     }
@@ -99,6 +102,11 @@ class UsageTrackingService: ObservableObject {
         saveMonthlyUsage()
         
         print("📈 [UsageTrackingService] 월간 텍스트 사용량: \(monthlyUsage.textCount)")
+        
+        // UI 업데이트 알림
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+        }
     }
     
     /// 이미지 카드뉴스 사용량 기록
@@ -110,6 +118,11 @@ class UsageTrackingService: ObservableObject {
         saveMonthlyUsage()
         
         print("📈 [UsageTrackingService] 월간 이미지 사용량: \(monthlyUsage.imageCount)")
+        
+        // UI 업데이트 알림
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+        }
     }
     
     /// 구독 상태 업데이트
