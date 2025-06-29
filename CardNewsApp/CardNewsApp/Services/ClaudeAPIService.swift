@@ -33,7 +33,7 @@ class ClaudeAPIService: ObservableObject {
     
     private func loadDeveloperAPIKey() {
         // 1순위: 환경변수에서 로드 (배포 시 권장)
-        if let envAPIKey = ProcessInfo.processInfo.environment["CLAUDE_API_KEY"], !envAPIKey.isEmpty {
+        if let envAPIKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !envAPIKey.isEmpty {
             apiKey = envAPIKey
             isConfigured = true
             print("🔍 [ClaudeAPIService] 환경변수에서 API 키 로드 완료")
@@ -41,9 +41,7 @@ class ClaudeAPIService: ObservableObject {
         }
         
         // 2순위: Info.plist에서 로드 (개발 시 사용)
-        if let path = Bundle.main.path(forResource: "Info", ofType: "plist"),
-           let plist = NSDictionary(contentsOfFile: path),
-           let plistAPIKey = plist["CLAUDE_API_KEY"] as? String, !plistAPIKey.isEmpty {
+        if let plistAPIKey = Bundle.main.object(forInfoDictionaryKey: "ANTHROPIC_API_KEY") as? String, !plistAPIKey.isEmpty {
             apiKey = plistAPIKey
             isConfigured = true
             print("🔍 [ClaudeAPIService] Info.plist에서 API 키 로드 완료")
