@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct TextInputView: View {
+    @Environment(\.colorScheme) var colorScheme
     @State private var inputText = """
     오픈뱅킹 공동업무 API 명세서
     
@@ -26,29 +27,96 @@ struct TextInputView: View {
     let onTextSubmitted: (String) -> Void
     
     var body: some View {
-        VStack(spacing: 20) {
-            Text("텍스트 직접 입력 (테스트용)")
-                .font(.headline)
-            
-            Text("파일 업로드 문제를 우회하기 위해 텍스트를 직접 입력해서 테스트할 수 있습니다.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-            
-            TextEditor(text: $inputText)
-                .border(Color.gray, width: 1)
-                .frame(minHeight: 200)
-            
-            Button("이 텍스트로 테스트") {
-                onTextSubmitted(inputText)
+        VStack(spacing: 24) {
+            // Header Section
+            VStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(AppGradients.primary)
+                        .frame(width: 60, height: 60)
+                        .shadow(color: AppColors.primaryStart.opacity(0.3), radius: 12, x: 0, y: 6)
+                    
+                    Image(systemName: "text.cursor")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                }
+                
+                Text("텍스트 직접 입력")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(AppColors.textPrimary)
+                
+                Text("테스트용으로 텍스트를 직접 입력해서 카드뉴스를 생성해보세요.")
+                    .font(.subheadline)
+                    .foregroundColor(AppColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
             }
-            .font(.headline)
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.green)
-            .cornerRadius(12)
+            .padding(.top)
+            
+            // Text Editor Section
+            VStack(alignment: .leading, spacing: 12) {
+                Text("내용 입력")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(AppColors.textPrimary)
+                
+                ZStack(alignment: .topLeading) {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(colorScheme == .dark ? AppColors.glassBackgroundDark : AppColors.glassBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(
+                                    colorScheme == .dark ? AppColors.glassBorderDark : AppColors.glassBorder,
+                                    lineWidth: 1
+                                )
+                        )
+                        .frame(minHeight: 240)
+                    
+                    TextEditor(text: $inputText)
+                        .font(.body)
+                        .foregroundColor(AppColors.textPrimary)
+                        .padding(16)
+                        .background(Color.clear)
+                        .scrollContentBackground(.hidden)
+                }
+                .shadow(color: AppColors.primaryStart.opacity(0.1), radius: 8, x: 0, y: 4)
+            }
+            
+            // Action Button
+            Button(action: {
+                onTextSubmitted(inputText)
+            }) {
+                HStack(spacing: 12) {
+                    Image(systemName: "sparkles")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                    
+                    Text("카드뉴스 생성하기")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(AppGradients.buttonSuccess)
+                        .shadow(color: AppColors.success.opacity(0.4), radius: 12, x: 0, y: 6)
+                )
+            }
+            .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .opacity(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.6 : 1.0)
+            
+            Spacer()
         }
-        .padding()
+        .padding(20)
+    }
+}
+
+#Preview {
+    TextInputView { text in
+        print("Text submitted: \(text)")
     }
 }
