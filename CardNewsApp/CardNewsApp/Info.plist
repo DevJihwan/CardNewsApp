@@ -32,5 +32,7 @@
     </array>
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>카드뉴스를 갤러리에 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다.</string>
+    <key>ANTHROPIC_API_KEY</key>
+    <string>$(ANTHROPIC_API_KEY)</string>
 </dict>
 </plist>

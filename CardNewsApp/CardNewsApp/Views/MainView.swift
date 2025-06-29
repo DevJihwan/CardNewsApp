@@ -2,7 +2,7 @@ import SwiftUI
 
 struct MainView: View {
     @StateObject private var claudeService = ClaudeAPIService()
-    @StateObject private var usageService = UsageTrackingService()
+    @ObservedObject private var usageService = UsageTrackingService.shared
     @State private var showFileUpload = false
     @State private var selectedFileURL: URL?
     @State private var isAppInitialized = false

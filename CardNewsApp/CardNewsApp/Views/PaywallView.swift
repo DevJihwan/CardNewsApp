@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var usageService = UsageTrackingService()
+    @ObservedObject private var usageService = UsageTrackingService.shared
     @State private var selectedTier: SubscriptionTier = .basic
     @State private var showingPurchase = false
     @State private var isProcessingPurchase = false
