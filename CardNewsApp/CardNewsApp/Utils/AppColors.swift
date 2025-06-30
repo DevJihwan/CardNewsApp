@@ -4,14 +4,14 @@ import SwiftUI
 struct AppColors {
     
     // MARK: - Primary AI-inspired Gradient Colors
-    static let primaryStart = Color(hex: "#6366f1")  // Indigo - AI/Tech feeling
-    static let primaryEnd = Color(hex: "#8b5cf6")    // Purple - Creative feeling
+    static let primaryStart = ColorHelper.fromHex("#6366f1")  // Indigo - AI/Tech feeling
+    static let primaryEnd = ColorHelper.fromHex("#8b5cf6")    // Purple - Creative feeling
     
     // MARK: - Accent Colors for Premium Feel
-    static let accent = Color(hex: "#f59e0b")        // Amber - Premium highlight
-    static let success = Color(hex: "#10b981")       // Emerald - Success states
-    static let warning = Color(hex: "#f97316")       // Orange - Warning/Alert
-    static let error = Color(hex: "#ef4444")         // Red - Error states
+    static let accent = ColorHelper.fromHex("#f59e0b")        // Amber - Premium highlight
+    static let success = ColorHelper.fromHex("#10b981")       // Emerald - Success states
+    static let warning = ColorHelper.fromHex("#f97316")       // Orange - Warning/Alert
+    static let error = ColorHelper.fromHex("#ef4444")         // Red - Error states
     
     // MARK: - Glassmorphism Support
     static let glassBackground = Color.white.opacity(0.1)
@@ -20,8 +20,8 @@ struct AppColors {
     static let glassBorderDark = Color.white.opacity(0.1)
     
     // MARK: - Background Gradients
-    static let backgroundLight = Color(hex: "#f8fafc")   // Very light gray
-    static let backgroundDark = Color(hex: "#0f0f23")    // Deep dark blue
+    static let backgroundLight = ColorHelper.fromHex("#f8fafc")   // Very light gray
+    static let backgroundDark = ColorHelper.fromHex("#0f0f23")    // Deep dark blue
     
     // MARK: - Text Colors
     static let textPrimary = Color.primary
@@ -116,9 +116,9 @@ struct AppGradients {
     )
 }
 
-// MARK: - Color Extension for Hex Support
-extension Color {
-    init(hex: String) {
+// MARK: - Internal Color Helper (to avoid conflicts)
+private struct ColorHelper {
+    static func fromHex(_ hex: String) -> Color {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         var int: UInt64 = 0
         Scanner(string: hex).scanHexInt64(&int)
@@ -134,7 +134,7 @@ extension Color {
             (a, r, g, b) = (1, 1, 1, 0)
         }
 
-        self.init(
+        return Color(
             .sRGB,
             red: Double(r) / 255,
             green: Double(g) / 255,
