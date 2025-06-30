@@ -4,6 +4,7 @@ struct SummaryConfigView: View {
     @StateObject private var claudeService = ClaudeAPIService()
     @ObservedObject private var usageService = UsageTrackingService.shared
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) var colorScheme
     @State private var summaryConfig = SummaryConfig(
         cardCount: .four,
         outputStyle: .text,
@@ -27,33 +28,31 @@ struct SummaryConfigView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // 사용량 상태 표시
-                    usageStatusSection
-                    
-                    // 상단 문서 정보
-                    documentInfoSection
-                    
-                    // 카드 수 선택
-                    cardCountSection
-                    
-                    // 출력 스타일 선택
-                    outputStyleSection
-                    
-                    // 언어 선택
-                    languageSection
-                    
-                    // 톤 선택
-                    toneSection
-                    
-                    // 생성 버튼
-                    generateButton
-                    
-                    // 하단 여백
-                    Color.clear.frame(height: 50)
+            ZStack {
+                // 🎨 Modern Background with Gradient
+                backgroundGradient
+                    .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 32) {
+                        // 📊 Usage Status - Premium Glass Card
+                        usageStatusSection
+                        
+                        // 📄 Document Info - Clean & Professional
+                        documentInfoSection
+                        
+                        // ⚙️ Configuration Sections - Modern Cards
+                        configurationSections
+                        
+                        // 🚀 Generate Button - Eye-catching CTA
+                        generateButton
+                        
+                        // Bottom spacing
+                        Color.clear.frame(height: 40)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 20)
                 }
-                .padding()
             }
             .navigationTitle("요약 설정")
             .navigationBarTitleDisplayMode(.large)
@@ -62,15 +61,12 @@ struct SummaryConfigView: View {
                     Button("취소") {
                         dismiss()
                     }
+                    .foregroundColor(AppColors.primaryStart)
                 }
                 
                 if usageService.isSubscriptionActive {
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("💎 \(usageService.currentSubscriptionTier.displayName)") {
-                            // TODO: 구독 관리 화면
-                        }
-                        .font(.caption)
-                        .foregroundColor(.blue)
+                        subscriptionBadge
                     }
                 }
             }
@@ -112,122 +108,293 @@ struct SummaryConfigView: View {
         }
     }
     
-    // MARK: - Usage Status Section
+    // MARK: - Background Gradient
+    private var backgroundGradient: some View {
+        AppGradients.backgroundLight
+            .overlay(
+                // Subtle pattern overlay
+                Color.white.opacity(colorScheme == .light ? 0.8 : 0.1)
+            )
+    }
+    
+    // MARK: - Subscription Badge
+    private var subscriptionBadge: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "crown.fill")
+                .font(.system(size: 14, weight: .semibold))
+            Text(usageService.currentSubscriptionTier.displayName)
+                .font(.system(size: 14, weight: .bold))
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(AppGradients.buttonAccent)
+                .shadow(color: AppColors.accent.opacity(0.3), radius: 4, x: 0, y: 2)
+        )
+    }
+    
+    // MARK: - Usage Status Section - Premium Glass Design
     private var usageStatusSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 20) {
+            // Header with Status Icon & Upgrade Button
             HStack {
-                Image(systemName: usageService.isSubscriptionActive ? "crown.fill" : "gift.fill")
-                    .foregroundColor(usageService.isSubscriptionActive ? .orange : .green)
-                Text(getSubscriptionStatusText())
-                    .font(.headline)
+                // Status Icon
+                ZStack {
+                    Circle()
+                        .fill(usageService.isSubscriptionActive ?
+                              AppGradients.buttonAccent : AppGradients.buttonSuccess)
+                        .frame(width: 56, height: 56)
+                        .shadow(color: (usageService.isSubscriptionActive ?
+                                       AppColors.accent : AppColors.success).opacity(0.3),
+                               radius: 8, x: 0, y: 4)
+                    
+                    Image(systemName: usageService.isSubscriptionActive ?
+                          "crown.fill" : "gift.fill")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                
+                // Status Text
+                VStack(alignment: .leading, spacing: 6) {
+                    Button(action: { showPaywall = true }) {
+                        Text(getSubscriptionStatusText())
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.primary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    Text(getSubscriptionStatusMessage())
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                
                 Spacer()
                 
+                // Upgrade Button (top-right position)
                 if !usageService.isSubscriptionActive {
                     Button("업그레이드") {
                         paywallTrigger = .upgradePrompt
                         showPaywall = true
                     }
-                    .font(.caption)
-                    .foregroundColor(.blue)
+                    .premiumButton(gradient: AppGradients.buttonAccent)
                 }
             }
             
+            // Usage Information
             if usageService.isSubscriptionActive {
-                // 구독자 상태
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("\(usageService.currentSubscriptionTier.displayName) 플랜")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        Spacer()
-                        Text(getSubscriptionStatusMessage())
-                            .font(.caption)
-                            .foregroundColor(.green)
-                    }
-                    
-                    let stats = usageService.getUsageStats()
+                // Subscription Details
+                let stats = usageService.getUsageStats()
+                VStack(alignment: .leading, spacing: 12) {
                     if usageService.currentSubscriptionTier == .basic {
-                        Text("이번 달 사용량: 텍스트 \(stats.textCount)/20개")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        usageProgressBar(
+                            title: "월 사용량",
+                            current: stats.textCount,
+                            total: 20,
+                            color: AppColors.accent
+                        )
                     } else {
-                        Text("이번 달 사용량: 텍스트 \(stats.textCount)개, 이미지 \(stats.imageCount)개")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text("무제한 이용")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                Text("이번 달: 텍스트 \(stats.textCount)개, 이미지 \(stats.imageCount)개")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "infinity")
+                                .font(.title2)
+                                .foregroundColor(AppColors.success)
+                        }
                     }
                 }
             } else {
-                // 무료 사용자 상태
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("남은 무료 횟수")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        Spacer()
-                        Text("\(usageService.remainingFreeUsage)/2회")
-                            .font(.subheadline)
-                            .fontWeight(.bold)
-                            .foregroundColor(usageService.remainingFreeUsage > 0 ? .green : .red)
-                    }
-                    
-                    if usageService.remainingFreeUsage == 0 {
-                        Text("무료 체험이 완료되었습니다. 계속 이용하려면 구독이 필요합니다.")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    } else {
-                        Text("무료 체험 중입니다. 텍스트 카드뉴스만 생성 가능합니다.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                // Free Usage Status
+                usageProgressBar(
+                    title: "무료 체험",
+                    current: 2 - usageService.remainingFreeUsage,
+                    total: 2,
+                    color: usageService.remainingFreeUsage > 0 ? AppColors.success : AppColors.error
+                )
+                
+                if usageService.remainingFreeUsage == 0 {
+                    Text("무료 체험이 완료되었습니다. 계속 이용하려면 구독해주세요.")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(AppColors.error)
+                        .padding(.top, 8)
                 }
             }
         }
-        .padding()
-        .background(usageService.isSubscriptionActive ? Color.orange.opacity(0.1) : Color.green.opacity(0.1))
-        .cornerRadius(12)
+        .padding(24)
+        .glassmorphism()
     }
     
-    // MARK: - Document Info Section
-    private var documentInfoSection: some View {
+    // MARK: - Usage Progress Bar
+    private func usageProgressBar(title: String, current: Int, total: Int, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Image(systemName: "doc.text")
-                    .foregroundColor(.blue)
-                Text("문서 정보")
-                    .font(.headline)
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.primary)
                 Spacer()
+                Text("\(current)/\(total)")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(color)
             }
             
-            VStack(spacing: 8) {
-                infoRow(icon: "doc.fill", title: "파일명", value: processedDocument.originalDocument.fileName)
-                infoRow(icon: "textformat.123", title: "단어 수", value: "\(processedDocument.wordCount)개")
-                infoRow(icon: "character.textbox", title: "문자 수", value: "\(processedDocument.characterCount)자")
-                infoRow(icon: "clock", title: "처리 시간", value: formatDate(processedDocument.processedAt))
+            // Modern Progress Bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(height: 12)
+                    
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(
+                            LinearGradient(
+                                colors: [color, color.opacity(0.7)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: geometry.size.width * (Double(current) / Double(total)), height: 12)
+                        .animation(.easeInOut(duration: 0.3), value: current)
+                }
             }
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
+            .frame(height: 12)
         }
     }
     
-    // MARK: - Card Count Section
-    private var cardCountSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "rectangle.3.group.fill")
-                    .foregroundColor(.blue)
-                Text("카드 수")
-                    .font(.headline)
+    // MARK: - Document Info Section - Clean Design
+    private var documentInfoSection: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Section Header
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(AppColors.primaryStart.opacity(0.15))
+                        .frame(width: 48, height: 48)
+                    
+                    Image(systemName: "doc.text.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(AppColors.primaryStart)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("문서 정보")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.primary)
+                    
+                    Text("분석할 문서의 세부 정보입니다")
+                        .font(.system(size: 15))
+                        .foregroundColor(.secondary)
+                }
+                
                 Spacer()
             }
             
+            // Document Details - Card Layout
+            VStack(spacing: 16) {
+                documentInfoRow(
+                    icon: "doc.fill",
+                    title: "파일명",
+                    value: processedDocument.originalDocument.fileName,
+                    color: AppColors.primaryStart
+                )
+                
+                Divider()
+                    .opacity(0.5)
+                
+                HStack(spacing: 24) {
+                    documentInfoRow(
+                        icon: "textformat.123",
+                        title: "단어 수",
+                        value: "\(processedDocument.wordCount)개",
+                        color: AppColors.success
+                    )
+                    
+                    documentInfoRow(
+                        icon: "character.textbox",
+                        title: "문자 수",
+                        value: "\(processedDocument.characterCount)자",
+                        color: AppColors.accent
+                    )
+                }
+                
+                Divider()
+                    .opacity(0.5)
+                
+                documentInfoRow(
+                    icon: "clock.fill",
+                    title: "처리 시간",
+                    value: formatDate(processedDocument.processedAt),
+                    color: AppColors.primaryEnd
+                )
+            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.secondarySystemGroupedBackground))
+                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+            )
+        }
+    }
+    
+    // MARK: - Document Info Row
+    private func documentInfoRow(icon: String, title: String, value: String, color: Color) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(color)
+                .frame(width: 24, height: 24)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Text(value)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+            }
+            
+            Spacer()
+        }
+    }
+    
+    // MARK: - Configuration Sections
+    private var configurationSections: some View {
+        VStack(spacing: 24) {
+            cardCountSection
+            outputStyleSection
+            languageSection
+            toneSection
+        }
+    }
+    
+    // MARK: - Card Count Section - Modern Selection
+    private var cardCountSection: some View {
+        configSection(
+            title: "카드 수",
+            subtitle: "생성할 카드뉴스의 장 수를 선택하세요",
+            icon: "rectangle.3.group.fill",
+            iconColor: AppColors.primaryStart
+        ) {
             LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible()),
-                GridItem(.flexible())
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12)
             ], spacing: 12) {
                 ForEach(SummaryConfig.CardCount.allCases, id: \.self) { count in
-                    Button(action: {
+                    selectionCard(
+                        title: "\(count.rawValue)",
+                        subtitle: count.displayName,
+                        isSelected: summaryConfig.cardCount == count
+                    ) {
                         summaryConfig = SummaryConfig(
                             cardCount: count,
                             outputStyle: summaryConfig.outputStyle,
@@ -235,21 +402,7 @@ struct SummaryConfigView: View {
                             tone: summaryConfig.tone
                         )
                         print("🔍 [SummaryConfigView] 카드 수 선택: \(count.displayName)")
-                    }) {
-                        VStack(spacing: 8) {
-                            Text("\(count.rawValue)")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                            Text(count.displayName)
-                                .font(.caption)
-                        }
-                        .frame(height: 60)
-                        .frame(maxWidth: .infinity)
-                        .background(summaryConfig.cardCount == count ? Color.blue : Color(.systemGray6))
-                        .foregroundColor(summaryConfig.cardCount == count ? .white : .primary)
-                        .cornerRadius(12)
                     }
-                    .buttonStyle(PlainButtonStyle())
                 }
             }
         }
@@ -257,22 +410,22 @@ struct SummaryConfigView: View {
     
     // MARK: - Output Style Section
     private var outputStyleSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "paintbrush.fill")
-                    .foregroundColor(.blue)
-                Text("출력 스타일")
-                    .font(.headline)
-                Spacer()
-            }
-            
+        configSection(
+            title: "출력 스타일",
+            subtitle: "카드뉴스의 시각적 스타일을 선택하세요",
+            icon: "paintbrush.fill",
+            iconColor: AppColors.accent
+        ) {
             VStack(spacing: 12) {
                 ForEach(SummaryConfig.OutputStyle.allCases, id: \.self) { style in
                     let isEnabled = isStyleEnabled(style)
                     
-                    Button(action: {
+                    styleOptionCard(
+                        style: style,
+                        isEnabled: isEnabled,
+                        isSelected: summaryConfig.outputStyle == style && isEnabled
+                    ) {
                         if !isEnabled {
-                            // 사용할 수 없는 스타일 선택 시 안내 메시지
                             if style == .image {
                                 paywallTrigger = .imageGenerationRequested
                                 showPaywall = true
@@ -287,58 +440,7 @@ struct SummaryConfigView: View {
                             tone: summaryConfig.tone
                         )
                         print("🔍 [SummaryConfigView] 출력 스타일 선택: \(style.displayName)")
-                    }) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(style.displayName)
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(isEnabled ? .primary : .secondary)
-                                    
-                                    if !isEnabled {
-                                        Text(getStyleRequirement(style))
-                                            .font(.caption)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.white)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(getStyleRequirementColor(style))
-                                            .cornerRadius(4)
-                                    }
-                                }
-                                
-                                Text(style.description)
-                                    .font(.caption)
-                                    .foregroundColor(isEnabled ? .secondary : .secondary.opacity(0.6))
-                            }
-                            Spacer()
-                            
-                            if summaryConfig.outputStyle == style && isEnabled {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.blue)
-                            } else {
-                                Image(systemName: "circle")
-                                    .foregroundColor(isEnabled ? .gray : .gray.opacity(0.5))
-                            }
-                        }
-                        .padding()
-                        .background(
-                            Group {
-                                if summaryConfig.outputStyle == style && isEnabled {
-                                    Color.blue.opacity(0.1)
-                                } else if isEnabled {
-                                    Color(.systemGray6)
-                                } else {
-                                    Color(.systemGray6).opacity(0.5)
-                                }
-                            }
-                        )
-                        .cornerRadius(12)
-                        .opacity(isEnabled ? 1.0 : 0.6)
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .disabled(!isEnabled)
                 }
             }
         }
@@ -346,22 +448,23 @@ struct SummaryConfigView: View {
     
     // MARK: - Language Section
     private var languageSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "globe")
-                    .foregroundColor(.blue)
-                Text("언어")
-                    .font(.headline)
-                Spacer()
-            }
-            
+        configSection(
+            title: "언어",
+            subtitle: "카드뉴스에 사용할 언어를 선택하세요",
+            icon: "globe",
+            iconColor: AppColors.success
+        ) {
             LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible()),
-                GridItem(.flexible())
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12)
             ], spacing: 12) {
                 ForEach(SummaryConfig.SummaryLanguage.allCases, id: \.self) { language in
-                    Button(action: {
+                    selectionCard(
+                        title: language.displayName,
+                        subtitle: nil,
+                        isSelected: summaryConfig.language == language
+                    ) {
                         summaryConfig = SummaryConfig(
                             cardCount: summaryConfig.cardCount,
                             outputStyle: summaryConfig.outputStyle,
@@ -369,17 +472,7 @@ struct SummaryConfigView: View {
                             tone: summaryConfig.tone
                         )
                         print("🔍 [SummaryConfigView] 언어 선택: \(language.displayName)")
-                    }) {
-                        Text(language.displayName)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .frame(height: 44)
-                            .frame(maxWidth: .infinity)
-                            .background(summaryConfig.language == language ? Color.blue : Color(.systemGray6))
-                            .foregroundColor(summaryConfig.language == language ? .white : .primary)
-                            .cornerRadius(12)
                     }
-                    .buttonStyle(PlainButtonStyle())
                 }
             }
         }
@@ -387,21 +480,22 @@ struct SummaryConfigView: View {
     
     // MARK: - Tone Section
     private var toneSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "waveform")
-                    .foregroundColor(.blue)
-                Text("톤")
-                    .font(.headline)
-                Spacer()
-            }
-            
+        configSection(
+            title: "톤",
+            subtitle: "카드뉴스의 어조와 분위기를 선택하세요",
+            icon: "waveform",
+            iconColor: AppColors.primaryEnd
+        ) {
             LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12)
             ], spacing: 12) {
                 ForEach(SummaryConfig.SummaryTone.allCases, id: \.self) { tone in
-                    Button(action: {
+                    selectionCard(
+                        title: tone.displayName,
+                        subtitle: nil,
+                        isSelected: summaryConfig.tone == tone
+                    ) {
                         summaryConfig = SummaryConfig(
                             cardCount: summaryConfig.cardCount,
                             outputStyle: summaryConfig.outputStyle,
@@ -409,100 +503,375 @@ struct SummaryConfigView: View {
                             tone: tone
                         )
                         print("🔍 [SummaryConfigView] 톤 선택: \(tone.displayName)")
-                    }) {
-                        Text(tone.displayName)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .frame(height: 44)
-                            .frame(maxWidth: .infinity)
-                            .background(summaryConfig.tone == tone ? Color.blue : Color(.systemGray6))
-                            .foregroundColor(summaryConfig.tone == tone ? .white : .primary)
-                            .cornerRadius(12)
                     }
-                    .buttonStyle(PlainButtonStyle())
                 }
             }
         }
     }
     
-    // MARK: - Generate Button
+    // MARK: - Config Section Wrapper
+    private func configSection<Content: View>(
+        title: String,
+        subtitle: String,
+        icon: String,
+        iconColor: Color,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Section Header
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(iconColor.opacity(0.15))
+                        .frame(width: 48, height: 48)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(iconColor)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.primary)
+                    
+                    Text(subtitle)
+                        .font(.system(size: 15))
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+            }
+            
+            // Content
+            content()
+        }
+        .padding(24)
+        .glassmorphism()
+    }
+    
+    // MARK: - Selection Card - 타입 불일치 오류 수정
+    private func selectionCard(
+        title: String,
+        subtitle: String?,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Text(title)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(isSelected ? .white : .primary)
+                
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(isSelected ? .white.opacity(0.9) : .secondary)
+                }
+            }
+            .frame(minHeight: 72)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 12)
+            .background(
+                Group {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(AppGradients.primary)
+                            .shadow(
+                                color: AppColors.primaryStart.opacity(0.3),
+                                radius: 8,
+                                x: 0,
+                                y: 4
+                            )
+                    } else {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.secondarySystemGroupedBackground))
+                    }
+                }
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .scaleEffect(isSelected ? 1.02 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+    }
+    
+    // MARK: - Style Option Card - 타입 불일치 오류 수정
+    private func styleOptionCard(
+        style: SummaryConfig.OutputStyle,
+        isEnabled: Bool,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                // Style Info
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 12) {
+                        Text(style.displayName)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(isEnabled ? .primary : .secondary)
+                        
+                        if !isEnabled {
+                            Text(getStyleRequirement(style))
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(getStyleRequirementColor(style))
+                                )
+                        }
+                        
+                        Spacer()
+                    }
+                    
+                    Text(style.description)
+                        .font(.system(size: 15))
+                        .foregroundColor(isEnabled ? .secondary : .secondary.opacity(0.6))
+                        .multilineTextAlignment(.leading)
+                }
+                
+                // Selection Indicator
+                ZStack {
+                    Circle()
+                        .fill(isSelected && isEnabled ? AppColors.primaryStart : Color.gray.opacity(0.3))
+                        .frame(width: 24, height: 24)
+                    
+                    if isSelected && isEnabled {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        isSelected && isEnabled ?
+                        Color(AppColors.primaryStart.opacity(0.1)) :
+                        Color(.secondarySystemGroupedBackground)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(
+                                isSelected && isEnabled ?
+                                AppColors.primaryStart.opacity(0.3) :
+                                Color.clear,
+                                lineWidth: 2
+                            )
+                    )
+            )
+            .opacity(isEnabled ? 1.0 : 0.6)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .disabled(!isEnabled)
+    }
+    
+    // MARK: - Generate Button - Eye-catching CTA
     private var generateButton: some View {
-        VStack(spacing: 16) {
-            Button(action: {
-                generateSummary()
-            }) {
-                HStack {
+        VStack(spacing: 20) {
+            Button(action: generateSummary) {
+                HStack(spacing: 16) {
                     if isGeneratingSummary {
                         ProgressView()
-                            .scaleEffect(0.8)
+                            .scaleEffect(0.9)
                             .foregroundColor(.white)
                     } else {
-                        Image(systemName: "wand.and.stars")
+                        ZStack {
+                            Circle()
+                                .fill(Color.white.opacity(0.2))
+                                .frame(width: 32, height: 32)
+                            
+                            Image(systemName: "wand.and.stars")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
                     }
-                    Text(isGeneratingSummary ? "카드뉴스 생성 중..." : "카드뉴스 생성")
+                    
+                    VStack(spacing: 4) {
+                        Text(isGeneratingSummary ? "AI가 카드뉴스를 생성하고 있습니다..." : "카드뉴스 생성하기")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.white)
+                        
+                        if !isGeneratingSummary {
+                            Text("고품질 AI 요약으로 시간을 절약하세요")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(.white.opacity(0.9))
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    if !isGeneratingSummary {
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
                 }
-                .font(.headline)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(getGenerateButtonColor())
-                .cornerRadius(12)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
+                .frame(minHeight: 80)
+                .background(
+                    Group {
+                        if canGenerate() {
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(AppGradients.primary)
+                                .shadow(
+                                    color: AppColors.primaryStart.opacity(0.4),
+                                    radius: 16,
+                                    x: 0,
+                                    y: 8
+                                )
+                        } else {
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(AppGradients.disabled)
+                        }
+                    }
+                )
             }
+            .buttonStyle(PlainButtonStyle())
             .disabled(isGeneratingSummary || !canGenerate())
+            .scaleEffect(isGeneratingSummary ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.2), value: isGeneratingSummary)
             
-            // 생성 불가능한 경우 안내 메시지
+            // Generation Status or Error Messages
             if !canGenerate() && !isGeneratingSummary {
                 usageLimitMessage
-            }
-            
-            // 생성 진행 중일 때 설명 텍스트
-            if isGeneratingSummary {
-                VStack(spacing: 8) {
-                    Text("AI가 문서를 분석하여 \(summaryConfig.cardCount.displayName) 카드뉴스를 생성하고 있습니다")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                    
-                    Text("설정: \(summaryConfig.outputStyle.displayName), \(summaryConfig.language.displayName), \(summaryConfig.tone.displayName)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                    
-                    Text("잠시만 기다려주세요...")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.horizontal)
+            } else if isGeneratingSummary {
+                generationProgressInfo
             }
         }
     }
     
     // MARK: - Usage Limit Message
     private var usageLimitMessage: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 16) {
             if summaryConfig.outputStyle == .image && !usageService.canCreateImageCardNews() {
-                Text("이미지 카드뉴스는 Pro 플랜 이상에서 이용 가능합니다")
-                    .font(.subheadline)
-                    .foregroundColor(.orange)
-                    .multilineTextAlignment(.center)
+                HStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(AppColors.warning)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("이미지 카드뉴스는 Pro 플랜 이상에서 이용 가능합니다")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        Text("텍스트 카드뉴스로 먼저 체험해보세요")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(AppColors.warning.opacity(0.1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(AppColors.warning.opacity(0.3), lineWidth: 1)
+                        )
+                )
+                
+                Button("Pro 플랜 살펴보기") {
+                    paywallTrigger = .imageGenerationRequested
+                    showPaywall = true
+                }
+                .premiumButton(gradient: AppGradients.buttonAccent)
+                
             } else if !usageService.canCreateTextCardNews() {
-                Text("무료 사용량을 모두 소진하셨습니다")
-                    .font(.subheadline)
-                    .foregroundColor(.red)
-                    .multilineTextAlignment(.center)
+                HStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .foregroundColor(AppColors.error)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("무료 사용량을 모두 소진하셨습니다")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        Text("계속 이용하려면 Basic 플랜을 구독해주세요")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(AppColors.error.opacity(0.1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(AppColors.error.opacity(0.3), lineWidth: 1)
+                        )
+                )
                 
                 Button("Basic 플랜 구독하기") {
                     paywallTrigger = .freeUsageExhausted
                     showPaywall = true
                 }
-                .font(.subheadline)
-                .foregroundColor(.blue)
-                .padding(.top, 4)
+                .premiumButton(gradient: AppGradients.buttonSuccess)
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(8)
+    }
+    
+    // MARK: - Generation Progress Info
+    private var generationProgressInfo: some View {
+        VStack(spacing: 16) {
+            // Progress Steps
+            HStack(spacing: 16) {
+                ForEach(0..<3) { step in
+                    HStack(spacing: 8) {
+                        ZStack {
+                            Circle()
+                                .fill(step == 0 ? AppColors.primaryStart : Color.gray.opacity(0.3))
+                                .frame(width: 8, height: 8)
+                            
+                            if step == 0 {
+                                Circle()
+                                    .stroke(AppColors.primaryStart, lineWidth: 2)
+                                    .frame(width: 16, height: 16)
+                                    .scaleEffect(1.0)
+                                    .animation(.easeInOut(duration: 1.0).repeatForever(), value: isGeneratingSummary)
+                            }
+                        }
+                        
+                        if step < 2 {
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(width: 20, height: 2)
+                        }
+                    }
+                }
+            }
+            
+            VStack(spacing: 8) {
+                Text("AI가 문서를 분석하여 \(summaryConfig.cardCount.displayName) 카드뉴스를 생성하고 있습니다")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                
+                Text("설정: \(summaryConfig.outputStyle.displayName) • \(summaryConfig.language.displayName) • \(summaryConfig.tone.displayName)")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                
+                Text("평균 30-60초 소요됩니다")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemGroupedBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(AppColors.primaryStart.opacity(0.2), lineWidth: 1)
+                )
+        )
     }
     
     // MARK: - Helper Methods
@@ -512,13 +881,13 @@ struct SummaryConfigView: View {
         if usageService.isSubscriptionActive {
             switch usageService.currentSubscriptionTier {
             case .basic:
-                return "Basic 구독"
+                return "Basic 구독중"
             case .pro:
-                return "Pro 구독"
+                return "Pro 구독중"
             case .premium:
-                return "Premium 구독"
+                return "Premium 구독중"
             default:
-                return "구독"
+                return "구독중"
             }
         } else {
             return "무료 체험"
@@ -526,13 +895,17 @@ struct SummaryConfigView: View {
     }
     
     private func getSubscriptionStatusMessage() -> String {
-        switch usageService.currentSubscriptionTier {
-        case .basic:
-            return "월 20개 텍스트 이용"
-        case .pro, .premium:
-            return "무제한 이용 가능"
-        default:
-            return ""
+        if usageService.isSubscriptionActive {
+            switch usageService.currentSubscriptionTier {
+            case .basic:
+                return "월 20개 텍스트 카드뉴스 이용 가능"
+            case .pro, .premium:
+                return "무제한 텍스트 및 이미지 카드뉴스"
+            default:
+                return ""
+            }
+        } else {
+            return "\(usageService.remainingFreeUsage)/2회 무료 체험 남음"
         }
     }
     
@@ -566,7 +939,7 @@ struct SummaryConfigView: View {
         case .webtoon:
             return Color.gray
         case .image:
-            return Color.orange
+            return AppColors.warning
         case .text:
             return Color.clear
         }
@@ -580,16 +953,6 @@ struct SummaryConfigView: View {
         }
     }
     
-    private func getGenerateButtonColor() -> Color {
-        if isGeneratingSummary {
-            return Color.gray
-        } else if canGenerate() {
-            return Color.blue
-        } else {
-            return Color.gray
-        }
-    }
-    
     private func setupClaudeAPI() {
         // Info.plist에서 이미 API 키가 로드되었으므로 추가 설정 불필요
         print("🔍 [SummaryConfigView] API 설정 확인 - isConfigured: \(claudeService.isConfigured)")
@@ -598,24 +961,6 @@ struct SummaryConfigView: View {
             print("✅ [SummaryConfigView] Claude API 준비 완료")
         } else {
             print("⚠️ [SummaryConfigView] API 키가 설정되지 않았습니다")
-        }
-    }
-    
-    private func infoRow(icon: String, title: String, value: String) -> some View {
-        HStack {
-            Image(systemName: icon)
-                .foregroundColor(.blue)
-                .frame(width: 20)
-            
-            Text(title)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            Spacer()
-            
-            Text(value)
-                .font(.subheadline)
-                .fontWeight(.medium)
         }
     }
     

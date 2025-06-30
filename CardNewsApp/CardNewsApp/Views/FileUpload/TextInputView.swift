@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct TextInputView: View {
-    @Environment(\.colorScheme) var colorScheme
     @State private var inputText = """
     오픈뱅킹 공동업무 API 명세서
     
@@ -27,91 +26,142 @@ struct TextInputView: View {
     let onTextSubmitted: (String) -> Void
     
     var body: some View {
-        VStack(spacing: 24) {
-            // Header Section
-            VStack(spacing: 12) {
+        VStack(spacing: 32) {
+            // Header Section - Clear & Professional
+            VStack(spacing: 20) {
+                // Icon
                 ZStack {
-                    Circle()
-                        .fill(AppGradients.primary)
-                        .frame(width: 60, height: 60)
-                        .shadow(color: AppColors.primaryStart.opacity(0.3), radius: 12, x: 0, y: 6)
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.blue, Color.blue.opacity(0.8)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 64, height: 64)
+                        .shadow(color: .blue.opacity(0.2), radius: 8, x: 0, y: 4)
                     
                     Image(systemName: "text.cursor")
-                        .font(.title2)
-                        .fontWeight(.semibold)
+                        .font(.system(size: 28, weight: .semibold))
                         .foregroundColor(.white)
                 }
                 
-                Text("텍스트 직접 입력")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(AppColors.textPrimary)
-                
-                Text("테스트용으로 텍스트를 직접 입력해서 카드뉴스를 생성해보세요.")
-                    .font(.subheadline)
-                    .foregroundColor(AppColors.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(2)
+                // Title & Description
+                VStack(spacing: 12) {
+                    Text("텍스트 직접 입력")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.primary)
+                    
+                    Text("테스트용으로 텍스트를 직접 입력해서\n카드뉴스를 생성해보세요")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(2)
+                }
             }
-            .padding(.top)
             
-            // Text Editor Section
-            VStack(alignment: .leading, spacing: 12) {
+            // Text Input Section - Large & Clear
+            VStack(alignment: .leading, spacing: 16) {
                 Text("내용 입력")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(AppColors.textPrimary)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.primary)
                 
+                // Large Text Editor with clear boundaries
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(colorScheme == .dark ? AppColors.glassBackgroundDark : AppColors.glassBackground)
+                        .fill(Color(.secondarySystemGroupedBackground))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(
-                                    colorScheme == .dark ? AppColors.glassBorderDark : AppColors.glassBorder,
-                                    lineWidth: 1
-                                )
+                                .stroke(Color.blue.opacity(0.2), lineWidth: 2)
                         )
-                        .frame(minHeight: 240)
+                        .frame(minHeight: 280)
+                        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                     
                     TextEditor(text: $inputText)
-                        .font(.body)
-                        .foregroundColor(AppColors.textPrimary)
-                        .padding(16)
+                        .font(.system(size: 16)) // Large, readable font
+                        .foregroundColor(.primary)
+                        .padding(20) // Generous padding
                         .background(Color.clear)
                         .scrollContentBackground(.hidden)
                 }
-                .shadow(color: AppColors.primaryStart.opacity(0.1), radius: 8, x: 0, y: 4)
+                
+                // Character count helper
+                HStack {
+                    Spacer()
+                    Text("\(inputText.count)자")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
             }
             
-            // Action Button
+            // Action Button - Large touch target
             Button(action: {
                 onTextSubmitted(inputText)
             }) {
-                HStack(spacing: 12) {
+                HStack(spacing: 16) {
                     Image(systemName: "sparkles")
-                        .font(.title3)
-                        .fontWeight(.semibold)
+                        .font(.system(size: 20, weight: .semibold))
                     
                     Text("카드뉴스 생성하기")
-                        .font(.headline)
-                        .fontWeight(.semibold)
+                        .font(.system(size: 18, weight: .bold))
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+                .padding(.vertical, 18) // Large touch target
                 .background(
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(AppGradients.buttonSuccess)
-                        .shadow(color: AppColors.success.opacity(0.4), radius: 12, x: 0, y: 6)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.green, Color.green.opacity(0.8)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .shadow(color: .green.opacity(0.3), radius: 8, x: 0, y: 4)
                 )
             }
             .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .opacity(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.6 : 1.0)
             
+            // Helper Text
+            VStack(spacing: 8) {
+                Text("💡 더 정확한 결과를 위한 팁")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.blue)
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("•")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.blue)
+                        Text("명확한 제목과 단락으로 구성해주세요")
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("•")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.blue)
+                        Text("최소 500자 이상 입력하시면 더 좋은 결과를 얻을 수 있습니다")
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.blue.opacity(0.05))
+            )
+            
             Spacer()
         }
-        .padding(20)
+        .padding(.horizontal, 24) // Generous margins
+        .padding(.vertical, 20)
+        .background(Color(.systemGroupedBackground))
     }
 }
 

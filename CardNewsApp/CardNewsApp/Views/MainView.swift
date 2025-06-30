@@ -3,6 +3,7 @@ import SwiftUI
 struct MainView: View {
     @StateObject private var claudeService = ClaudeAPIService()
     @ObservedObject private var usageService = UsageTrackingService.shared
+    @Environment(\.colorScheme) var colorScheme
     @State private var showFileUpload = false
     @State private var selectedFileURL: URL?
     @State private var isAppInitialized = false
@@ -14,119 +15,45 @@ struct MainView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 30) {
-                    // 앱 로고 영역
-                    VStack {
-                        Image(systemName: "doc.text.magnifyingglass")
-                            .font(.system(size: 60))
-                            .foregroundColor(.blue)
+            ZStack {
+                // 🎨 Clean background with subtle warmth
+                Color(.systemGroupedBackground)
+                    .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 40) {
+                        // 📱 Header Section - Clear Value Proposition
+                        headerSection
                         
-                        Text("CardNews App")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
+                        // 🚀 Primary Action - Large & Clear
+                        primaryActionButton
                         
-                        Text("문서를 카드뉴스로 변환하세요")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    // 사용량 상태 표시
-                    usageStatusCard
-                    
-                    // 선택된 파일 정보 표시 (모달이 닫혔을 때)
-                    if let fileURL = selectedFileURL, !showFileUpload {
-                        selectedFileCard(fileURL)
-                    }
-                    
-                    // 파일 업로드 버튼
-                    Button(action: {
-                        print("🔍 [MainView] 파일 업로드 버튼 클릭")
-                        // 무료 사용량 확인
-                        if !usageService.canCreateTextCardNews() {
-                            showPaywall = true
-                            return
+                        // 📊 Status Card - Essential Information
+                        usageStatusCard
+                        
+                        // 📄 Recent Work - Card-based Organization
+                        recentWorkSection
+                        
+                        // 💡 Benefits Section - Time-saving Focus
+                        benefitsSection
+                        
+                        // 🔧 Development Tools (if needed)
+                        if ProcessInfo.processInfo.environment["DEBUG_MODE"] != nil {
+                            testButtonsSection
                         }
-                        openFileUpload()
-                    }) {
-                        VStack(spacing: 8) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 30))
-                            Text("파일 업로드")
-                                .font(.headline)
-                            Text("PDF 파일")
-                                .font(.caption)
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(
-                            LinearGradient(
-                                gradient: Gradient(colors: [.blue, .blue.opacity(0.8)]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .cornerRadius(12)
-                        .shadow(radius: 2)
+                        
+                        // Bottom spacing
+                        Color.clear.frame(height: 60)
                     }
-                    
-                    // 기능 안내 카드들
-                    LazyVGrid(columns: [
-                        GridItem(.flexible()),
-                        GridItem(.flexible())
-                    ], spacing: 16) {
-                        featureCard(
-                            icon: "rectangle.3.group.fill",
-                            title: "4/6/8컷",
-                            description: "원하는 길이 선택"
-                        )
-                        
-                        featureCard(
-                            icon: "paintbrush.fill",
-                            title: "3가지 스타일",
-                            description: "웹툰/텍스트/이미지"
-                        )
-                        
-                        featureCard(
-                            icon: "heart.fill",
-                            title: "첫 사용 무료",
-                            description: "체험해보세요"
-                        )
-                        
-                        featureCard(
-                            icon: "iphone",
-                            title: "모바일 최적화",
-                            description: "언제 어디서나"
-                        )
-                    }
-                    
-                    // 테스트 버튼들 (개발용)
-                    testButtonsSection
-                    
-                    // 최근 요약 목록
-                    recentSummariesSection
-                    
-                    Spacer()
+                    .padding(.horizontal, 24) // Generous margins for readability
+                    .padding(.top, 20)
                 }
-                .padding()
             }
             .navigationTitle("CardNews")
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if usageService.isSubscriptionActive {
-                        Button("💎 \(usageService.currentSubscriptionTier.displayName)") {
-                            showPaywall = true
-                        }
-                        .font(.caption)
-                        .foregroundColor(.orange)
-                    } else {
-                        Button("💎 구독") {
-                            showPaywall = true
-                        }
-                        .font(.caption)
-                        .foregroundColor(.blue)
-                    }
+                    subscriptionButton
                 }
             }
             .sheet(isPresented: $showFileUpload) {
@@ -140,51 +67,35 @@ struct MainView: View {
                     SummaryResultView(summaryResult: summary)
                         .onAppear {
                             print("🔍 [MainView] SummaryResultView 모달 표시")
-                            print("📄 [MainView] 선택된 요약: \(summary.originalDocument.fileName)")
-                            print("🎯 [MainView] 카드 수: \(summary.cards.count)장")
                         }
                 } else {
                     Text("선택된 요약이 없습니다")
                         .foregroundColor(.red)
-                        .onAppear {
-                            print("❌ [MainView] selectedSummary가 nil입니다")
-                        }
                 }
             }
             .sheet(isPresented: $showAllSummaries) {
                 SummaryHistoryView(summaries: recentSummaries)
-                    .onAppear {
-                        print("🔍 [MainView] SummaryHistoryView 모달 표시")
-                    }
             }
             .sheet(isPresented: $showPaywall) {
                 PaywallView(triggerReason: .freeUsageExhausted)
-                    .onAppear {
-                        print("💰 [MainView] PaywallView 모달 표시")
-                    }
             }
             .onAppear {
-                // 🔧 앱 초기화 완료 후 일정 시간 대기
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     isAppInitialized = true
                     loadRecentSummaries()
-                    print("🔍 [MainView] 앱 초기화 완료")
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .summaryCompleted)) { _ in
-                print("🔍 [MainView] 새로운 요약 완료 알림 수신")
                 loadRecentSummaries()
             }
             .onReceive(NotificationCenter.default.publisher(for: .dismissAllModals)) { _ in
-                print("🔍 [MainView] 모든 모달 닫기 알림 수신")
                 showFileUpload = false
                 showSummaryDetail = false
                 showAllSummaries = false
                 showPaywall = false
             }
             .onReceive(NotificationCenter.default.publisher(for: .subscriptionStatusChanged)) { _ in
-                print("💎 [MainView] 구독 상태 변경 알림 수신")
-                // SwiftUI will automatically update the view when @StateObject properties change
+                // UI 자동 업데이트
             }
             .refreshable {
                 loadRecentSummaries()
@@ -192,355 +103,530 @@ struct MainView: View {
         }
     }
     
-    // MARK: - Test Buttons Section (개발용)
+    // MARK: - Header Section - Clear Value Proposition
+    private var headerSection: some View {
+        VStack(spacing: 20) {
+            // App Icon - Professional & Clear
+            ZStack {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(red: 0.2, green: 0.4, blue: 0.8), Color(red: 0.1, green: 0.3, blue: 0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 80, height: 80)
+                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                
+                Image(systemName: "doc.text.below.ecg")
+                    .font(.system(size: 36, weight: .medium))
+                    .foregroundColor(.white)
+            }
+            
+            // Title & Description - Clear Hierarchy
+            VStack(spacing: 12) {
+                Text("CardNews")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                
+                Text("문서를 보기 쉬운 카드뉴스로\n빠르게 변환해드립니다")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+            }
+        }
+    }
+    
+    // MARK: - Primary Action Button - 72px height for optimal touch
+    private var primaryActionButton: some View {
+        Button(action: {
+            if !usageService.canCreateTextCardNews() {
+                showPaywall = true
+                return
+            }
+            openFileUpload()
+        }) {
+            HStack(spacing: 20) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.25))
+                        .frame(width: 56, height: 56)
+                    
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 32, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                
+                // Text Content
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("파일 업로드")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Text("PDF나 Word 파일을 선택하세요")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                
+                Spacer()
+                
+                // Arrow
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 20)
+            .frame(minHeight: 80) // Large touch target
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.orange, Color.red.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .shadow(color: .orange.opacity(0.4), radius: 12, x: 0, y: 6)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    // MARK: - Usage Status Card - Clean & Professional
+    private var usageStatusCard: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Header with Status - ZStack for top-right button positioning
+            ZStack(alignment: .topTrailing) {
+                // Main content
+                HStack(spacing: 16) {
+                    // Status Icon
+                    ZStack {
+                        Circle()
+                            .fill(usageService.isSubscriptionActive ?
+                                  Color.green : Color.blue)
+                            .frame(width: 50, height: 50)
+                        
+                        Image(systemName: usageService.isSubscriptionActive ?
+                              "checkmark.seal.fill" : "gift.fill")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    
+                    // Status Text
+                    VStack(alignment: .leading, spacing: 6) {
+                        Button(action: { showPaywall = true }) {
+                            Text(getSubscriptionStatusText())
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.primary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        if usageService.isSubscriptionActive {
+                            Text("\(usageService.currentSubscriptionTier.displayName) 플랜")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.secondary)
+                            
+                            Text("월 20개 카드뉴스 이용 가능")
+                                .font(.system(size: 15))
+                                .foregroundColor(.secondary)
+                        } else {
+                            HStack(spacing: 8) {
+                                Text("무료 체험:")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                
+                                Text("\(usageService.remainingFreeUsage)/2회 남음")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(usageService.remainingFreeUsage > 0 ?
+                                                   .blue : .red)
+                            }
+                        }
+                    }
+                    
+                    Spacer()
+                }
+                
+                // Small Upgrade Button (top-right position)
+                if !usageService.isSubscriptionActive {
+                    Button("업그레이드") {
+                        showPaywall = true
+                    }
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color.orange)
+                            .shadow(color: .orange.opacity(0.3), radius: 2, x: 0, y: 1)
+                    )
+                }
+            }
+            
+            // Progress Bar (for free users only)
+            if !usageService.isSubscriptionActive {
+                VStack(alignment: .leading, spacing: 12) {
+                    let usedCount = 2 - usageService.remainingFreeUsage
+                    let progress = Double(usedCount) / 2.0
+                    
+                    // Progress Bar
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.gray.opacity(0.2))
+                                .frame(height: 8)
+                            
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(usageService.remainingFreeUsage > 0 ?
+                                      Color.blue : Color.red)
+                                .frame(width: geometry.size.width * progress, height: 8)
+                                .animation(.easeInOut(duration: 0.3), value: progress)
+                        }
+                    }
+                    .frame(height: 8)
+                    
+                    // Status Text
+                    if usageService.remainingFreeUsage == 0 {
+                        Text("무료 체험이 완료되었습니다. 계속 이용하려면 구독해주세요.")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.red)
+                    } else {
+                        Text("텍스트 카드뉴스 \(usedCount)/2회 사용")
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(24)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemGroupedBackground))
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        )
+    }
+    
+    // MARK: - Recent Work Section - Card-based Organization
+    private var recentWorkSection: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Section Header
+            HStack {
+                Text("최근 작업")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                if !recentSummaries.isEmpty {
+                    Button("전체 보기") {
+                        showAllSummaries = true
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.blue)
+                }
+            }
+            
+            // Content
+            if recentSummaries.isEmpty {
+                emptyStateView
+            } else {
+                LazyVStack(spacing: 16) {
+                    ForEach(recentSummaries.prefix(3), id: \.id) { summary in
+                        recentWorkCard(summary)
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Recent Work Card - 72px minimum height
+    private func recentWorkCard(_ summary: SummaryResult) -> some View {
+        Button(action: {
+            selectedSummary = summary
+            showSummaryDetail = true
+        }) {
+            HStack(spacing: 16) {
+                // Document Icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.blue.opacity(0.1))
+                        .frame(width: 56, height: 56)
+                    
+                    Image(systemName: "doc.text.fill")
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundColor(.blue)
+                }
+                
+                // Content
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(summary.originalDocument.fileName)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    
+                    HStack(spacing: 16) {
+                        Label("\(summary.cards.count)장", systemImage: "rectangle.3.group")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.blue)
+                        
+                        Text(formatDate(summary.createdAt))
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Preview text
+                    if let firstCard = summary.cards.first {
+                        Text(firstCard.title)
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+                
+                Spacer()
+                
+                // Arrow
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.blue)
+            }
+            .padding(20)
+            .frame(minHeight: 80) // Large touch target
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.secondarySystemGroupedBackground))
+                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    // MARK: - Empty State - Encouraging & Clear
+    private var emptyStateView: some View {
+        VStack(spacing: 20) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.1))
+                    .frame(width: 80, height: 80)
+                
+                Image(systemName: "tray")
+                    .font(.system(size: 36, weight: .medium))
+                    .foregroundColor(.blue)
+            }
+            
+            // Text
+            VStack(spacing: 8) {
+                Text("아직 생성된 카드뉴스가 없습니다")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                Text("첫 번째 문서를 업로드해서\n시간을 절약해보세요!")
+                    .font(.system(size: 16))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+    }
+    
+    // MARK: - Benefits Section - Time-saving Focus
+    private var benefitsSection: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("시간 절약 효과")
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(.primary)
+            
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 20),
+                GridItem(.flexible(), spacing: 20)
+            ], spacing: 20) {
+                benefitCard(
+                    icon: "clock.fill",
+                    title: "90% 시간 단축",
+                    description: "문서 읽기 시간을\n대폭 단축합니다",
+                    color: .green
+                )
+                
+                benefitCard(
+                    icon: "eye.fill",
+                    title: "한눈에 파악",
+                    description: "핵심 내용을\n카드로 정리",
+                    color: .blue
+                )
+                
+                benefitCard(
+                    icon: "rectangle.3.group.fill",
+                    title: "선택 가능",
+                    description: "4장, 6장, 8장\n원하는 길이로",
+                    color: .orange
+                )
+                
+                benefitCard(
+                    icon: "checkmark.seal.fill",
+                    title: "정확한 요약",
+                    description: "AI가 핵심만\n정확히 추출",
+                    color: .purple
+                )
+            }
+        }
+    }
+    
+    // MARK: - Benefit Card - Fixed size for consistency
+    private func benefitCard(icon: String, title: String, description: String, color: Color) -> some View {
+        VStack(spacing: 16) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 56, height: 56)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(color)
+            }
+            
+            // Text - Fixed height container for consistency
+            VStack(spacing: 6) {
+                Text(title)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                Text(description)
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(minHeight: 60) // Fixed text area height
+        }
+        .padding(20)
+        .frame(minHeight: 140, maxHeight: 140) // Fixed card height
+        .frame(maxWidth: .infinity) // Full width utilization
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+    }
+    
+    // MARK: - Subscription Button
+    private var subscriptionButton: some View {
+        Button(action: { showPaywall = true }) {
+            HStack(spacing: 8) {
+                Image(systemName: usageService.isSubscriptionActive ?
+                      "crown.fill" : "sparkles")
+                    .font(.system(size: 14, weight: .semibold))
+                
+                Text(usageService.isSubscriptionActive ?
+                     usageService.currentSubscriptionTier.displayName :
+                     "구독")
+                    .font(.system(size: 14, weight: .bold))
+            }
+            .foregroundColor(usageService.isSubscriptionActive ? .orange : .blue)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(
+                        (usageService.isSubscriptionActive ? Color.orange : Color.blue)
+                            .opacity(0.15)
+                    )
+            )
+        }
+    }
+    
+    // MARK: - Test Buttons (Development only)
     private var testButtonsSection: some View {
-        VStack(spacing: 12) {
-            Text("테스트 기능")
-                .font(.headline)
+        VStack(spacing: 16) {
+            Text("개발 도구")
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(.secondary)
             
             HStack(spacing: 12) {
-                // PaywallView 테스트 버튼
-                Button("구독 화면 보기") {
-                    showPaywall = true
-                }
-                .font(.caption)
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.purple)
-                .cornerRadius(8)
+                Button("구독 화면") { showPaywall = true }
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.purple)
+                    .cornerRadius(8)
                 
-                // 무료 사용량 리셋 버튼
-                Button("무료 사용량 리셋") {
-                    usageService.resetFreeUsage()
-                }
-                .font(.caption)
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.orange)
-                .cornerRadius(8)
+                Button("사용량 리셋") { usageService.resetFreeUsage() }
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.orange)
+                    .cornerRadius(8)
                 
-                // 구독 상태 토글 버튼
                 Button(usageService.isSubscriptionActive ? "구독 해제" : "구독 활성화") {
                     usageService.updateSubscription(
                         isActive: !usageService.isSubscriptionActive,
                         tier: usageService.isSubscriptionActive ? .none : .basic
                     )
                 }
-                .font(.caption)
+                .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.white)
                 .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .padding(.vertical, 8)
                 .background(usageService.isSubscriptionActive ? Color.red : Color.green)
                 .cornerRadius(8)
             }
         }
-        .padding()
-        .background(Color(.systemGray6).opacity(0.5))
-        .cornerRadius(12)
-    }
-    
-    // MARK: - Usage Status Card
-    private var usageStatusCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: usageService.isSubscriptionActive ? "crown.fill" : "gift.fill")
-                    .foregroundColor(usageService.isSubscriptionActive ? .orange : .green)
-                    .font(.title2)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    // 구독 상태에 따른 정확한 표시
-                    Button(action: {
-                        showPaywall = true
-                    }) {
-                        Text(getSubscriptionStatusText())
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    
-                    if usageService.isSubscriptionActive {
-                        Text("\(usageService.currentSubscriptionTier.displayName) 플랜 • 월 20개 카드뉴스")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Text("남은 무료 횟수: \(usageService.remainingFreeUsage)/2회")
-                            .font(.subheadline)
-                            .foregroundColor(usageService.remainingFreeUsage > 0 ? .secondary : .red)
-                    }
-                }
-                
-                Spacer()
-                
-                if !usageService.isSubscriptionActive {
-                    Button("업그레이드") {
-                        showPaywall = true
-                    }
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.orange)
-                    .cornerRadius(8)
-                }
-            }
-            
-            // 무료 사용량 진행 바
-            if !usageService.isSubscriptionActive {
-                VStack(alignment: .leading, spacing: 4) {
-                    let usedCount = 2 - usageService.remainingFreeUsage
-                    let progress = Double(usedCount) / 2.0
-                    
-                    ProgressView(value: progress)
-                        .progressViewStyle(LinearProgressViewStyle(tint: usageService.remainingFreeUsage > 0 ? .green : .red))
-                        .scaleEffect(x: 1, y: 1.5, anchor: .center)
-                    
-                    if usageService.remainingFreeUsage == 0 {
-                        Text("무료 체험이 완료되었습니다. Basic 플랜으로 업그레이드하여 계속 이용하세요!")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    } else {
-                        Text("텍스트 카드뉴스 \(usedCount)/2회 사용됨")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-        }
-        .padding()
+        .padding(20)
         .background(
-            LinearGradient(
-                gradient: Gradient(colors: usageService.isSubscriptionActive ? 
-                    [Color.orange.opacity(0.1), Color.yellow.opacity(0.1)] :
-                    [Color.green.opacity(0.1), Color.blue.opacity(0.1)]
-                ),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .cornerRadius(12)
-        .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(usageService.isSubscriptionActive ? Color.orange.opacity(0.3) : Color.green.opacity(0.3), lineWidth: 1)
+                .fill(Color.gray.opacity(0.1))
         )
-    }
-    
-    // MARK: - Recent Summaries Section
-    
-    private var recentSummariesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("최근 요약")
-                    .font(.headline)
-                Spacer()
-                if !recentSummaries.isEmpty {
-                    Button("전체 보기") {
-                        print("🔍 [MainView] 전체 보기 버튼 클릭")
-                        showAllSummaries = true
-                    }
-                    .font(.caption)
-                    .foregroundColor(.blue)
-                }
-            }
-            
-            if recentSummaries.isEmpty {
-                emptyStateView
-            } else {
-                LazyVStack(spacing: 12) {
-                    ForEach(recentSummaries.prefix(3), id: \.id) { summary in
-                        summaryCard(summary)
-                    }
-                }
-            }
-        }
-    }
-    
-    private var emptyStateView: some View {
-        VStack {
-            Image(systemName: "tray")
-                .font(.system(size: 30))
-                .foregroundColor(.gray)
-            Text("아직 요약된 문서가 없습니다")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            Text("첫 번째 문서를 업로드해보세요!")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(8)
-    }
-    
-    private func summaryCard(_ summary: SummaryResult) -> some View {
-        Button(action: {
-            print("🔍 [MainView] 요약 카드 선택됨")
-            print("📄 [MainView] 파일명: \(summary.originalDocument.fileName)")
-            print("🎯 [MainView] 카드 수: \(summary.cards.count)장")
-            print("📝 [MainView] 카드 내용 확인:")
-            
-            // 각 카드의 내용을 상세히 로그
-            for (index, card) in summary.cards.enumerated() {
-                print("  📇 카드 \(index + 1): '\(card.title)' (내용: \(card.content.count)자)")
-                print("     내용 미리보기: \(card.content.prefix(100))...")
-            }
-            
-            selectedSummary = summary
-            showSummaryDetail = true
-            
-            print("✅ [MainView] selectedSummary 설정 완료, showSummaryDetail = true")
-        }) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(summary.originalDocument.fileName)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .lineLimit(1)
-                        
-                        HStack(spacing: 8) {
-                            Label("\(summary.cards.count)컷", systemImage: "rectangle.3.group")
-                            Label(summary.config.outputStyle.displayName, systemImage: "paintbrush")
-                            Label(summary.config.language.displayName, systemImage: "globe")
-                        }
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text(formatDate(summary.createdAt))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                    }
-                }
-                
-                // 첫 번째 카드 미리보기
-                if let firstCard = summary.cards.first {
-                    Text(firstCard.title)
-                        .font(.caption)
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                        .padding(.top, 4)
-                } else {
-                    Text("카드 정보 없음")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                        .padding(.top, 4)
-                }
-            }
-            .padding()
-            .background(Color(.systemBackground))
-            .cornerRadius(8)
-            .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-        }
-        .buttonStyle(PlainButtonStyle())
     }
     
     // MARK: - Helper Methods
     
-    // 구독 상태에 따른 정확한 텍스트 반환
     private func getSubscriptionStatusText() -> String {
         if usageService.isSubscriptionActive {
             switch usageService.currentSubscriptionTier {
-            case .basic:
-                return "Basic 구독자"
-            case .pro:
-                return "Pro 구독자"
-            case .premium:
-                return "Premium 구독자"
-            default:
-                return "구독자"
+            case .basic: return "Basic 구독중"
+            case .pro: return "Pro 구독중"
+            case .premium: return "Premium 구독중"
+            default: return "구독중"
             }
         } else {
             return "무료 체험"
         }
     }
     
-    // 🔧 안전한 파일 업로드 모달 열기
     private func openFileUpload() {
-        // 앱이 완전히 초기화된 후에만 모달 열기
         guard isAppInitialized else {
-            print("⚠️ [MainView] 앱 아직 초기화 중... 잠시 후 다시 시도")
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 openFileUpload()
             }
             return
         }
         
-        print("🔍 [MainView] 파일 업로드 모달 열기 시작")
-        
-        // 약간의 지연을 두어 안정성 향상
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             showFileUpload = true
-            print("🔍 [MainView] showFileUpload = true 설정 완료")
         }
     }
     
     private func loadRecentSummaries() {
-        print("🔍 [MainView] 최근 요약 로드 시작")
         recentSummaries = claudeService.loadSavedSummaries()
-        print("🔍 [MainView] 로드된 요약 수: \(recentSummaries.count)개")
-        
-        // 로드된 요약들의 카드 수 확인
-        for summary in recentSummaries.prefix(3) {
-            print("📊 [MainView] 요약 '\(summary.originalDocument.fileName)': \(summary.cards.count)장 (설정: \(summary.config.cardCount.displayName))")
-        }
-    }
-    
-    // 선택된 파일 카드 (메인 화면에 표시)
-    private func selectedFileCard(_ url: URL) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: "doc.fill")
-                    .foregroundColor(.blue)
-                Text("선택된 파일")
-                    .font(.headline)
-                Spacer()
-                Button("계속 처리") {
-                    openFileUpload()
-                }
-                .font(.caption)
-                .foregroundColor(.blue)
-            }
-            
-            Text(url.lastPathComponent)
-                .font(.body)
-                .lineLimit(2)
-        }
-        .padding()
-        .background(Color(.systemBlue).opacity(0.1))
-        .cornerRadius(8)
-    }
-    
-    // 기능 안내 카드
-    private func featureCard(icon: String, title: String, description: String) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 24))
-                .foregroundColor(.blue)
-            
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-            
-            Text(description)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(8)
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -564,7 +650,7 @@ struct MainView: View {
     }
 }
 
-// MARK: - Summary History View
+// MARK: - Summary History View - Optimized for Mature Users
 
 struct SummaryHistoryView: View {
     @Environment(\.dismiss) private var dismiss
@@ -577,68 +663,69 @@ struct SummaryHistoryView: View {
         NavigationView {
             VStack {
                 if summaries.isEmpty {
-                    // 빈 상태 - 중앙 정렬로 전체 화면 사용
+                    // Empty State
                     Spacer()
                     
                     VStack(spacing: 24) {
-                        Image(systemName: "tray")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
+                        ZStack {
+                            Circle()
+                                .fill(Color.blue.opacity(0.1))
+                                .frame(width: 100, height: 100)
+                            
+                            Image(systemName: "tray")
+                                .font(.system(size: 48, weight: .medium))
+                                .foregroundColor(.blue)
+                        }
                         
-                        VStack(spacing: 8) {
-                            Text("저장된 요약이 없습니다")
-                                .font(.title2)
-                                .fontWeight(.semibold)
+                        VStack(spacing: 12) {
+                            Text("저장된 카드뉴스가 없습니다")
+                                .font(.system(size: 22, weight: .bold))
                                 .foregroundColor(.primary)
                             
-                            Text("첫 번째 문서를 업로드해서\n카드뉴스를 만들어보세요!")
-                                .font(.body)
+                            Text("첫 번째 문서를 업로드해서\n시간을 절약해보세요!")
+                                .font(.system(size: 18))
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
+                                .lineSpacing(2)
                         }
                         
-                        Button(action: {
-                            print("🔍 [SummaryHistoryView] 메인으로 돌아가기 버튼 클릭")
+                        Button("메인으로 돌아가기") {
                             dismiss()
-                        }) {
-                            HStack {
-                                Image(systemName: "house.fill")
-                                Text("메인으로 돌아가기")
-                            }
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 12)
-                            .background(Color.blue)
-                            .cornerRadius(10)
                         }
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 14)
+                        .background(Color.blue)
+                        .cornerRadius(12)
                     }
                     
                     Spacer()
                 } else {
-                    // 요약이 있는 경우 - 리스트 표시
-                    List {
-                        ForEach(summaries, id: \.id) { summary in
-                            summaryHistoryRow(summary)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    print("🔍 [SummaryHistoryView] 요약 선택: \(summary.originalDocument.fileName)")
-                                    selectedSummary = summary
-                                    showSummaryDetail = true
-                                }
+                    // Summary List
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(summaries, id: \.id) { summary in
+                                summaryHistoryCard(summary)
+                                    .onTapGesture {
+                                        selectedSummary = summary
+                                        showSummaryDetail = true
+                                    }
+                            }
                         }
+                        .padding(20)
                     }
-                    .listStyle(PlainListStyle())
                 }
             }
-            .navigationTitle("전체 요약")
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("전체 카드뉴스")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("완료") {
-                        print("🔍 [SummaryHistoryView] 완료 버튼 클릭")
                         dismiss()
                     }
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.blue)
                 }
             }
@@ -650,89 +737,83 @@ struct SummaryHistoryView: View {
         }
     }
     
-    private func summaryHistoryRow(_ summary: SummaryResult) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
+    private func summaryHistoryCard(_ summary: SummaryResult) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.blue.opacity(0.1))
+                        .frame(width: 48, height: 48)
+                    
+                    Image(systemName: "doc.text.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.blue)
+                }
+                
                 VStack(alignment: .leading, spacing: 4) {
                     Text(summary.originalDocument.fileName)
-                        .font(.headline)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.primary)
                         .lineLimit(2)
                     
                     HStack(spacing: 12) {
-                        Label("\(summary.cards.count)컷", systemImage: "rectangle.3.group")
-                        Label(summary.config.outputStyle.displayName, systemImage: "paintbrush")
-                        Label(summary.config.language.displayName, systemImage: "globe")
-                        Label(summary.config.tone.displayName, systemImage: "waveform")
+                        Label("\(summary.cards.count)장", systemImage: "rectangle.3.group")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.blue)
+                        
+                        Text(formatHistoryDate(summary.createdAt))
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                        
+                        Text("\(summary.tokensUsed) 토큰")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
                     }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
                 }
                 
                 Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(formatHistoryDate(summary.createdAt))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text("\(summary.tokensUsed) 토큰")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
             }
             
-            // 첫 번째 카드 미리보기
+            // Preview
             if let firstCard = summary.cards.first {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(firstCard.title)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .lineLimit(1)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
                     
                     Text(firstCard.content)
-                        .font(.caption)
+                        .font(.system(size: 15))
                         .foregroundColor(.secondary)
                         .lineLimit(3)
                 }
-                .padding(.top, 4)
             }
         }
-        .padding(.vertical, 4)
+        .padding(20)
+        .frame(minHeight: 80)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemGroupedBackground))
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        )
     }
     
     private func formatHistoryDate(_ date: Date) -> String {
         let formatter = DateFormatter()
-        let now = Date()
         let calendar = Calendar.current
         
-        // 오늘인지 확인 (수동 구현)
-        let nowComponents = calendar.dateComponents([.year, .month, .day], from: now)
-        let dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
-        
-        if nowComponents.year == dateComponents.year &&
-           nowComponents.month == dateComponents.month &&
-           nowComponents.day == dateComponents.day {
-            // 오늘
+        if calendar.isDateInToday(date) {
             formatter.timeStyle = .short
             return "오늘 \(formatter.string(from: date))"
-        } 
-        
-        // 어제인지 확인
-        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now) {
-            let yesterdayComponents = calendar.dateComponents([.year, .month, .day], from: yesterday)
-            if yesterdayComponents.year == dateComponents.year &&
-               yesterdayComponents.month == dateComponents.month &&
-               yesterdayComponents.day == dateComponents.day {
-                // 어제
-                formatter.timeStyle = .short
-                return "어제 \(formatter.string(from: date))"
-            }
+        } else if calendar.isDateInYesterday(date) {
+            formatter.timeStyle = .short
+            return "어제 \(formatter.string(from: date))"
+        } else {
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            return formatter.string(from: date)
         }
-        
-        // 그 외의 날짜
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
     }
 }
 

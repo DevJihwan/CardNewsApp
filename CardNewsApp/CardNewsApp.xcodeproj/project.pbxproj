@@ -33,9 +33,22 @@
 		EE4972602E0B855C00D63C80 /* CardNewsAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CardNewsAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		EE4974792E12538400D63C80 /* Exceptions for "CardNewsApp" folder in "CardNewsApp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = EE4972452E0B855B00D63C80 /* CardNewsApp */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		EE4972482E0B855B00D63C80 /* CardNewsApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				EE4974792E12538400D63C80 /* Exceptions for "CardNewsApp" folder in "CardNewsApp" target */,
+			);
 			path = CardNewsApp;
 			sourceTree = "<group>";
 		};
