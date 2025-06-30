@@ -356,7 +356,7 @@ struct PaywallView: View {
                 
                 ZStack {
                     Circle()
-                        .fill(selectedTier == tier && isEnabled ? AppGradients.primary : Color.gray.opacity(0.3))
+                        .fill(selectedTier == tier && isEnabled ? AppColors.primaryStart : Color.gray.opacity(0.3))
                         .frame(width: 24, height: 24)
                     
                     if selectedTier == tier && isEnabled {
@@ -372,7 +372,7 @@ struct PaywallView: View {
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(
                         selectedTier == tier && isEnabled ? 
-                        AppGradients.primary : Color.clear, 
+                        AppColors.primaryStart : Color.clear, 
                         lineWidth: 2
                     )
             )
