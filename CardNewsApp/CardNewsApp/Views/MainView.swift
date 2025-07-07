@@ -12,7 +12,8 @@ struct MainView: View {
     @State private var selectedSummary: SummaryResult?
     @State private var showAllSummaries = false
     @State private var showPaywall = false
-    @State private var fileSelectionSucceeded = false // ✅ NEW: 파일 선택 성공 추적
+    @State private var fileSelectionSucceeded = false
+    @State private var lastSelectedFileURL: URL? // ✅ NEW: 마지막에 선택된 파일 보관
     
     var body: some View {
         NavigationStack {
@@ -58,7 +59,7 @@ struct MainView: View {
                 }
             }
             .sheet(isPresented: $showFileUpload) {
-                FileUploadView(preselectedFile: selectedFileURL)
+                FileUploadView(preselectedFile: selectedFileURL ?? lastSelectedFileURL) // ✅ 마지막 선택 파일도 고려
                     .onAppear {
                         print("🔍 [MainView] FileUploadView 모달 표시")
                         fileSelectionSucceeded = false // 리셋
@@ -66,12 +67,16 @@ struct MainView: View {
                     .onDisappear {
                         print("🔍 [MainView] FileUploadView 모달 사라짐 - fileSelectionSucceeded: \(fileSelectionSucceeded)")
                         
-                        // ✅ NEW: 파일 선택 성공 후 모달이 닫혔다면 즉시 다시 열기
+                        // ✅ IMPROVED: 파일 선택 성공 후 모달이 닫혔다면 즉시 다시 열기
                         if fileSelectionSucceeded {
                             print("🔧 [MainView] 파일 선택 성공 후 의도치 않은 모달 닫힘 감지 - 즉시 재열기")
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                                 showFileUpload = true
                             }
+                        } else {
+                            // 정상적인 닫힘이면 파일 정보 클리어
+                            lastSelectedFileURL = nil
+                            selectedFileURL = nil
                         }
                     }
             }
@@ -106,19 +111,31 @@ struct MainView: View {
                 showSummaryDetail = false
                 showAllSummaries = false
                 showPaywall = false
+                // 모든 모달 닫힘 시 파일 정보도 클리어
+                lastSelectedFileURL = nil
+                selectedFileURL = nil
+                fileSelectionSucceeded = false
             }
             .onReceive(NotificationCenter.default.publisher(for: .subscriptionStatusChanged)) { _ in
                 // UI 자동 업데이트
             }
-            .onReceive(NotificationCenter.default.publisher(for: .fileUploadSuccess)) { _ in
-                // ✅ NEW: 파일 선택 성공 알림 수신
+            .onReceive(NotificationCenter.default.publisher(for: .fileUploadSuccess)) { notification in
+                // ✅ IMPROVED: 파일 선택 성공 알림 수신 시 파일 정보 보관
                 print("🎉 [MainView] 파일 선택 성공 알림 수신 - 모달 보호 활성화")
                 fileSelectionSucceeded = true
+                
+                // ✅ NEW: 선택된 파일 정보 보관
+                if let fileURL = notification.object as? URL {
+                    lastSelectedFileURL = fileURL
+                    print("🗃️ [MainView] 선택된 파일 정보 보관: \(fileURL.lastPathComponent)")
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .fileUploadUserCancelled)) { _ in
-                // ✅ NEW: 사용자 취소 알림 수신
+                // 사용자 취소 알림 수신
                 print("🔍 [MainView] 사용자 취소 알림 수신 - 모달 보호 비활성화")
                 fileSelectionSucceeded = false
+                lastSelectedFileURL = nil
+                selectedFileURL = nil
             }
             .onReceive(NotificationCenter.default.publisher(for: .fileUploadFirstAttemptFailed)) { _ in
                 // ✅ IMPROVED: 더 엄격한 조건으로 재시도
@@ -809,8 +826,9 @@ struct MainView: View {
             return
         }
         
-        // 파일 선택 상태 리셋
+        // 파일 선택 상태 리셋 (새로운 업로드 시작)
         fileSelectionSucceeded = false
+        lastSelectedFileURL = nil
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             showFileUpload = true
@@ -1014,8 +1032,8 @@ struct SummaryHistoryView: View {
 extension Notification.Name {
     static let dismissAllModals = Notification.Name("dismissAllModals")
     static let fileUploadFirstAttemptFailed = Notification.Name("fileUploadFirstAttemptFailed")
-    static let fileUploadSuccess = Notification.Name("fileUploadSuccess") // ✅ NEW
-    static let fileUploadUserCancelled = Notification.Name("fileUploadUserCancelled") // ✅ NEW
+    static let fileUploadSuccess = Notification.Name("fileUploadSuccess")
+    static let fileUploadUserCancelled = Notification.Name("fileUploadUserCancelled")
 }
 
 #Preview {
