@@ -9,6 +9,8 @@ struct PaywallView: View {
     @State private var isProcessingPurchase = false
     @State private var errorMessage: String?
     @State private var showingError = false
+    @State private var productsLoadAttempts = 0
+    @State private var maxLoadAttempts = 3
     
     let triggerReason: PaywallTrigger
     
@@ -71,6 +73,13 @@ struct PaywallView: View {
                             usageService.updateSubscription(isActive: false, tier: .none)
                             print("🧪 [PaywallView] 구독 해제 완료")
                         }
+                        
+                        Button("제품 다시 로드") {
+                            Task {
+                                await subscriptionService.loadProducts()
+                                print("🧪 [PaywallView] 제품 재로드 완료")
+                            }
+                        }
                     } label: {
                         Image(systemName: "hammer.circle")
                             .foregroundColor(.orange)
@@ -80,14 +89,25 @@ struct PaywallView: View {
             }
             .alert("구독 오류", isPresented: $showingError) {
                 Button("확인") { }
+                
+                // StoreKit 설정 관련 오류인 경우 추가 옵션 제공
+                if errorMessage?.contains("StoreKit Configuration") == true || 
+                   errorMessage?.contains("제품 정보가 로드되지") == true {
+                    Button("다시 시도") {
+                        Task {
+                            await subscriptionService.loadProducts()
+                        }
+                    }
+                }
             } message: {
                 Text(errorMessage ?? "알 수 없는 오류가 발생했습니다.")
             }
             .onAppear {
                 print("💰 [PaywallView] 결제 화면 표시, 트리거: \(triggerReason)")
-                Task {
-                    await subscriptionService.loadProducts()
-                }
+                loadProductsWithRetry()
+            }
+            .refreshable {
+                await subscriptionService.loadProducts()
             }
         }
     }
@@ -205,13 +225,23 @@ struct PaywallView: View {
                         ProgressView()
                             .scaleEffect(1.0)
                             .foregroundColor(.white)
+                    } else if subscriptionService.isLoading {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .foregroundColor(.white)
+                        Text("제품 정보 로딩 중...")
+                            .font(.system(size: 16, weight: .medium))
+                    } else if !subscriptionService.areProductsLoaded() {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 20, weight: .bold))
+                        Text("제품 정보 로드 실패")
+                            .font(.system(size: 16, weight: .medium))
                     } else {
                         Image(systemName: "crown.fill")
                             .font(.system(size: 20, weight: .bold))
+                        Text("\(selectedTier.monthlyPrice)/월로 시작하기")
+                            .font(.system(size: 18, weight: .bold))
                     }
-                    
-                    Text(isProcessingPurchase ? "처리 중..." : "\(selectedTier.monthlyPrice)/월로 시작하기")
-                        .font(.system(size: 18, weight: .bold))
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
@@ -220,21 +250,40 @@ struct PaywallView: View {
                     RoundedRectangle(cornerRadius: 16)
                         .fill(
                             LinearGradient(
-                                colors: [Color.blue, Color.blue.opacity(0.8)],
+                                colors: buttonColors(),
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .shadow(color: .blue.opacity(0.4), radius: 12, x: 0, y: 6)
+                        .shadow(color: buttonShadowColor(), radius: 12, x: 0, y: 6)
                 )
             }
-            .disabled(isProcessingPurchase)
+            .disabled(isProcessingPurchase || subscriptionService.isLoading || !subscriptionService.areProductsLoaded())
             .scaleEffect(isProcessingPurchase ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: isProcessingPurchase)
             
-            Text("언제든지 취소 가능 • 자동 갱신")
-                .font(.system(size: 15))
-                .foregroundColor(.secondary)
+            // Status message
+            if subscriptionService.isLoading {
+                Text("제품 정보를 불러오고 있습니다...")
+                    .font(.system(size: 15))
+                    .foregroundColor(.secondary)
+            } else if !subscriptionService.areProductsLoaded() {
+                VStack(spacing: 8) {
+                    Text("제품 정보를 불러올 수 없습니다")
+                        .font(.system(size: 15))
+                        .foregroundColor(.red)
+                    
+                    Button("다시 시도") {
+                        loadProductsWithRetry()
+                    }
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.blue)
+                }
+            } else {
+                Text("언제든지 취소 가능 • 자동 갱신")
+                    .font(.system(size: 15))
+                    .foregroundColor(.secondary)
+            }
         }
     }
     
@@ -449,6 +498,26 @@ struct PaywallView: View {
     
     // MARK: - Helper Methods
     
+    private func buttonColors() -> [Color] {
+        if !subscriptionService.areProductsLoaded() {
+            return [Color.gray, Color.gray.opacity(0.8)]
+        } else if subscriptionService.isLoading {
+            return [Color.orange, Color.orange.opacity(0.8)]
+        } else {
+            return [Color.blue, Color.blue.opacity(0.8)]
+        }
+    }
+    
+    private func buttonShadowColor() -> Color {
+        if !subscriptionService.areProductsLoaded() {
+            return .gray.opacity(0.3)
+        } else if subscriptionService.isLoading {
+            return .orange.opacity(0.4)
+        } else {
+            return .blue.opacity(0.4)
+        }
+    }
+    
     private func getHeaderIcon() -> String {
         switch triggerReason {
         case .freeUsageExhausted:
@@ -493,9 +562,47 @@ struct PaywallView: View {
         }
     }
     
+    private func loadProductsWithRetry() {
+        Task {
+            await subscriptionService.loadProducts()
+            
+            // 제품 로드에 실패하고 최대 시도 횟수에 도달하지 않은 경우 재시도
+            if !subscriptionService.areProductsLoaded() && productsLoadAttempts < maxLoadAttempts {
+                productsLoadAttempts += 1
+                print("💰 [PaywallView] 제품 로드 재시도 \(productsLoadAttempts)/\(maxLoadAttempts)")
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    loadProductsWithRetry()
+                }
+            }
+        }
+    }
+    
     @MainActor
     private func handleSubscription() async {
         print("💰 [PaywallView] 구독 처리 시작: \(selectedTier.displayName)")
+        
+        // 제품이 로드되지 않은 경우 처리
+        if !subscriptionService.areProductsLoaded() {
+            print("⚠️ [PaywallView] 제품이 로드되지 않음. 재로드 시도...")
+            await subscriptionService.loadProducts()
+            
+            if !subscriptionService.areProductsLoaded() {
+                errorMessage = """
+                제품 정보를 불러올 수 없습니다.
+                
+                시뮬레이터에서 테스트하는 경우:
+                1. Xcode > Edit Scheme > Run > Options
+                2. StoreKit Configuration에서 'Configuration.storekit' 선택
+                3. 앱을 완전히 종료 후 재실행
+                
+                문제가 계속되면 실제 기기에서 테스트해주세요.
+                """
+                showingError = true
+                return
+            }
+        }
+        
         isProcessingPurchase = true
         
         let productID = getProductID(for: selectedTier)
