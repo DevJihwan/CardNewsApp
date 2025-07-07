@@ -10,8 +10,6 @@ struct FileUploadView: View {
     @State private var pickerAttemptCount = 0
     @State private var showRetryAlert = false
     @State private var isSimulator = false
-    @State private var isFilePickerSession = false // ✅ NEW: 파일 피커 세션 추적
-    @State private var dismissalTimer: Timer? // ✅ NEW: 의도하지 않은 dismiss 방지용 타이머
     
     let preselectedFile: URL?
     
@@ -64,30 +62,14 @@ struct FileUploadView: View {
                         print("🔍 [FileUploadView] 사용자가 의도적으로 취소 버튼 클릭")
                         shouldStayOpen = false
                         preventDismiss = false
-                        isFilePickerSession = false
-                        dismissalTimer?.invalidate()
                         dismiss()
                     }
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.secondary)
                 }
             }
-            .fullScreenCover(isPresented: $showingFilePicker, onDismiss: {
-                print("🔍 [FileUploadView] fullScreenCover onDismiss 호출")
-                
-                // ✅ NEW: 타이머로 잠시 후 상태 정리 (View Service disconnect 대응)
-                dismissalTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
-                    DispatchQueue.main.async {
-                        if isFilePickerSession && !viewModel.isFileSelected {
-                            print("⚠️ [FileUploadView] View Service disconnect로 인한 모달 닫힘 방지")
-                            // 파일이 선택되지 않았다면 다시 피커를 열지 않고 상태만 정리
-                        }
-                        isFilePickerSession = false
-                        dismissalTimer?.invalidate()
-                        dismissalTimer = nil
-                    }
-                }
-            }) {
+            .sheet(isPresented: $showingFilePicker) {
+                // ✅ MAJOR CHANGE: fullScreenCover → sheet로 변경하여 View Service 문제 해결
                 SafeDocumentPickerView { result in
                     handleFilePickerResult(result)
                 }
@@ -131,7 +113,6 @@ struct FileUploadView: View {
                 
                 shouldStayOpen = true
                 preventDismiss = true
-                isFilePickerSession = false
                 print("🔍 [FileUploadView] 뷰 나타남 - 모달 보호 활성화")
                 
                 if let file = preselectedFile {
@@ -142,29 +123,18 @@ struct FileUploadView: View {
                 }
             }
             .onDisappear {
-                print("🔍 [FileUploadView] onDisappear 호출")
-                print("🔍 [FileUploadView] 상태: shouldStayOpen=\(shouldStayOpen), preventDismiss=\(preventDismiss)")
-                print("🔍 [FileUploadView] 파일피커: showingFilePicker=\(showingFilePicker), isFilePickerSession=\(isFilePickerSession)")
-                print("🔍 [FileUploadView] 파일상태: isFileSelected=\(viewModel.isFileSelected)")
-                
-                // ✅ SIMPLIFIED: 단순화된 로직 - View Service disconnect는 정상적인 동작으로 간주
-                if shouldStayOpen && preventDismiss && !showingFilePicker && !isFilePickerSession {
+                // ✅ SIMPLIFIED: sheet 사용으로 View Service 문제 해결됨
+                if shouldStayOpen && preventDismiss && !showingFilePicker {
                     print("⚠️ [FileUploadView] 예상치 못한 모달 닫힘 감지!")
                 } else {
                     print("✅ [FileUploadView] 정상적인 모달 닫힘")
                 }
-                
-                // 타이머 정리
-                dismissalTimer?.invalidate()
-                dismissalTimer = nil
             }
             .onChange(of: showingFilePicker) { _, newValue in
                 print("🔍 [FileUploadView] showingFilePicker 변경: \(newValue)")
                 
                 if newValue {
-                    // 파일 피커 세션 시작
-                    isFilePickerSession = true
-                    print("🔧 [FileUploadView] 파일 피커 세션 시작")
+                    print("🔧 [FileUploadView] 파일 피커 열림 (sheet)")
                 } else {
                     print("🔧 [FileUploadView] 파일 피커 닫힘")
                 }
@@ -175,11 +145,7 @@ struct FileUploadView: View {
                 if newValue {
                     shouldStayOpen = true
                     preventDismiss = true
-                    // 파일이 성공적으로 선택되면 세션 종료
-                    isFilePickerSession = false
-                    dismissalTimer?.invalidate()
-                    dismissalTimer = nil
-                    print("🔧 [FileUploadView] 파일 선택 완료 - 모달 보호 강화, 세션 종료")
+                    print("🔧 [FileUploadView] 파일 선택 완료 - 모달 보호 강화")
                 }
             }
             .onChange(of: viewModel.isProcessed) { _, newValue in
@@ -195,14 +161,13 @@ struct FileUploadView: View {
                 }
             }
         }
-        .interactiveDismissDisabled(preventDismiss && !showingFilePicker)
+        .interactiveDismissDisabled(preventDismiss)
     }
     
     // MARK: - File Selection Result Processing
     private func handleFilePickerResult(_ result: Result<URL, Error>) {
         print("🔍 [FileUploadView] 파일 선택 결과 수신")
         
-        // ✅ ENHANCED: 즉시 상태 업데이트
         DispatchQueue.main.async {
             showingFilePicker = false
             processFileSelectionResult(result)
@@ -218,10 +183,6 @@ struct FileUploadView: View {
             
         case .failure(let error):
             print("❌ [FileUploadView] 파일 선택 실패: \(error)")
-            // 실패 시에도 세션 종료
-            isFilePickerSession = false
-            dismissalTimer?.invalidate()
-            dismissalTimer = nil
             handlePickerError(error)
         }
     }
@@ -259,11 +220,6 @@ struct FileUploadView: View {
     
     private func retryFilePicker() {
         print("🔄 [FileUploadView] DocumentPicker 재시도")
-        
-        // 상태 초기화
-        isFilePickerSession = false
-        dismissalTimer?.invalidate()
-        dismissalTimer = nil
         
         // 충분한 지연 시간을 두고 재시도
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -745,10 +701,8 @@ struct SafeDocumentPickerView: View {
                 
                 print("📁 [SafeDocumentPicker] 결과 수신: \(result)")
                 
-                // ✅ ENHANCED: 더 안전한 결과 전달
                 DispatchQueue.main.async {
                     onResult(result)
-                    // dismiss는 onResult 콜백에서 처리하도록 변경
                 }
             }
             .navigationTitle("파일 선택")
