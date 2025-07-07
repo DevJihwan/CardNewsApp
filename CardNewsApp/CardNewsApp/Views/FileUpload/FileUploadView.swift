@@ -71,19 +71,19 @@ struct FileUploadView: View {
                     .foregroundColor(.secondary)
                 }
             }
-            .fullScreenCover(isPresented: $showingFilePicker) {
-                // ✅ ENHANCED: onDismiss 콜백 추가
-                SafeDocumentPickerView { result in
-                    handleFilePickerResult(result)
-                }
-            } onDismiss: {
-                // ✅ NEW: fullScreenCover 닫힘 시 상태 정리
+            .fullScreenCover(isPresented: $showingFilePicker, onDismiss: {
+                // ✅ FIXED: onDismiss를 content 앞으로 이동
                 print("🔍 [FileUploadView] fullScreenCover onDismiss 호출")
                 DispatchQueue.main.async {
                     isFilePickerActive = false
                     if !hasProcessedPickerResult {
                         print("⚠️ [FileUploadView] 파일 선택 없이 피커 닫힘")
                     }
+                }
+            }) {
+                // ✅ ENHANCED: onDismiss 콜백 추가
+                SafeDocumentPickerView { result in
+                    handleFilePickerResult(result)
                 }
             }
             .sheet(isPresented: $viewModel.showSummaryConfig) {
