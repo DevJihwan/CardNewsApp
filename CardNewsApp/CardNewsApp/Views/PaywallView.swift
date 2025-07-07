@@ -3,9 +3,12 @@ import SwiftUI
 struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var usageService = UsageTrackingService.shared
+    @StateObject private var subscriptionService = SubscriptionService(usageService: UsageTrackingService.shared)
     @State private var selectedTier: SubscriptionTier = .basic
     @State private var showingPurchase = false
     @State private var isProcessingPurchase = false
+    @State private var errorMessage: String?
+    @State private var showingError = false
     
     let triggerReason: PaywallTrigger
     
@@ -54,9 +57,37 @@ struct PaywallView: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.secondary)
                 }
+                
+                // 🧪 테스트용: 무료 사용량 리셋 버튼
+                #if DEBUG
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button("무료 사용량 리셋") {
+                            usageService.resetFreeUsage()
+                            print("🧪 [PaywallView] 무료 사용량 리셋 완료")
+                        }
+                        
+                        Button("구독 해제") {
+                            usageService.updateSubscription(isActive: false, tier: .none)
+                            print("🧪 [PaywallView] 구독 해제 완료")
+                        }
+                    } label: {
+                        Image(systemName: "hammer.circle")
+                            .foregroundColor(.orange)
+                    }
+                }
+                #endif
+            }
+            .alert("구독 오류", isPresented: $showingError) {
+                Button("확인") { }
+            } message: {
+                Text(errorMessage ?? "알 수 없는 오류가 발생했습니다.")
             }
             .onAppear {
                 print("💰 [PaywallView] 결제 화면 표시, 트리거: \(triggerReason)")
+                Task {
+                    await subscriptionService.loadProducts()
+                }
             }
         }
     }
@@ -165,7 +196,9 @@ struct PaywallView: View {
     private var subscribeButton: some View {
         VStack(spacing: 16) {
             Button(action: {
-                handleSubscription()
+                Task {
+                    await handleSubscription()
+                }
             }) {
                 HStack(spacing: 16) {
                     if isProcessingPurchase {
@@ -266,7 +299,9 @@ struct PaywallView: View {
                     .foregroundColor(.secondary)
                 
                 Button("복원") {
-                    print("💰 [PaywallView] 구매 복원 요청")
+                    Task {
+                        await subscriptionService.restorePurchases()
+                    }
                 }
                 .font(.system(size: 15))
                 .foregroundColor(.blue)
@@ -458,23 +493,37 @@ struct PaywallView: View {
         }
     }
     
-    private func handleSubscription() {
+    @MainActor
+    private func handleSubscription() async {
         print("💰 [PaywallView] 구독 처리 시작: \(selectedTier.displayName)")
         isProcessingPurchase = true
         
-        // TODO: StoreKit 2 구독 처리
-        // 현재는 시뮬레이션
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            isProcessingPurchase = false
-            
-            // 구독 성공 시뮬레이션
-            usageService.updateSubscription(isActive: true, tier: selectedTier)
-            
-            // 구독 성공 알림
-            NotificationCenter.default.post(name: .subscriptionStatusChanged, object: nil)
-            
+        let productID = getProductID(for: selectedTier)
+        
+        await subscriptionService.purchase(productID: productID)
+        
+        // 구독 상태 확인
+        if subscriptionService.purchaseState == .purchased {
             print("✅ [PaywallView] 구독 완료: \(selectedTier.displayName)")
             dismiss()
+        } else if subscriptionService.purchaseState == .failed {
+            errorMessage = subscriptionService.errorMessage
+            showingError = true
+        }
+        
+        isProcessingPurchase = false
+    }
+    
+    private func getProductID(for tier: SubscriptionTier) -> String {
+        switch tier {
+        case .basic:
+            return "cardnews_basic_monthly"
+        case .pro:
+            return "cardnews_pro_monthly"
+        case .premium:
+            return "cardnews_premium_monthly"
+        case .none:
+            return ""
         }
     }
 }
