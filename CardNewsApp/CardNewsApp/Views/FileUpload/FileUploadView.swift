@@ -10,7 +10,6 @@ struct FileUploadView: View {
     @State private var pickerAttemptCount = 0
     @State private var showRetryAlert = false
     @State private var isSimulator = false
-    @State private var fileSelectionResult: Result<URL, Error>?
     
     let preselectedFile: URL?
     
@@ -152,11 +151,6 @@ struct FileUploadView: View {
                     print("🎯 [FileUploadView] 요약 설정 화면 열림")
                 }
             }
-            .onChange(of: fileSelectionResult) { _, result in
-                if let result = result {
-                    processFileSelectionResult(result)
-                }
-            }
         }
         .interactiveDismissDisabled(preventDismiss)
     }
@@ -164,7 +158,7 @@ struct FileUploadView: View {
     // MARK: - File Selection Result Processing
     private func handleFilePickerResult(_ result: Result<URL, Error>) {
         print("🔍 [FileUploadView] 파일 선택 결과 수신")
-        fileSelectionResult = result
+        processFileSelectionResult(result)
     }
     
     private func processFileSelectionResult(_ result: Result<URL, Error>) {
@@ -178,9 +172,6 @@ struct FileUploadView: View {
             print("❌ [FileUploadView] 파일 선택 실패: \(error)")
             handlePickerError(error)
         }
-        
-        // 결과 처리 후 초기화
-        fileSelectionResult = nil
     }
     
     // MARK: - File Selection Handler
