@@ -10,8 +10,8 @@ struct FileUploadView: View {
     @State private var pickerAttemptCount = 0
     @State private var showRetryAlert = false
     @State private var isSimulator = false
-    @State private var isFirstLaunch = true // ✅ NEW: 첫 번째 실행 추적
-    @State private var fileSelectionInProgress = false // ✅ NEW: 파일 선택 진행 중 추적
+    @State private var isFirstLaunch = true
+    @State private var fileSelectionInProgress = false
     
     let preselectedFile: URL?
     
@@ -132,19 +132,16 @@ struct FileUploadView: View {
                 print("🔍 [FileUploadView] 파일상태: isFileSelected=\(viewModel.isFileSelected), fileSelectionInProgress=\(fileSelectionInProgress)")
                 print("🔍 [FileUploadView] 런치상태: isFirstLaunch=\(isFirstLaunch)")
                 
-                // ✅ ENHANCED: 더 정교한 자동 재시도 로직
                 if shouldStayOpen && preventDismiss && !showingFilePicker {
                     if isFirstLaunch && !viewModel.isFileSelected && fileSelectionInProgress {
-                        print("🔧 [FileUploadView] 첫 번째 시도 실패 (파일 미선택) - 자동 재시도 예약")
+                        print("🔧 [FileUploadView] 첫 번째 시도 실패 감지 - MainView에 재시도 요청")
                         
-                        // 자동 재시도
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                            if !viewModel.isFileSelected {
-                                print("🔄 [FileUploadView] 첫 번째 시도 실패 - 자동 재시도 실행")
-                                isFirstLaunch = false
-                                fileSelectionInProgress = false
-                                showingFilePicker = true
-                            }
+                        // ✅ NEW: MainView에게 재시도 요청 Notification 전송
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                            NotificationCenter.default.post(
+                                name: .fileUploadFirstAttemptFailed,
+                                object: nil
+                            )
                         }
                     } else if viewModel.isFileSelected {
                         print("✅ [FileUploadView] 파일 선택 완료 - View Service disconnect는 정상 (무시)")
@@ -846,6 +843,12 @@ enum DocumentPickerError: LocalizedError {
             return "파일 선택 중 시스템 오류가 발생했습니다"
         }
     }
+}
+
+// MARK: - Notification Extensions
+
+extension Notification.Name {
+    static let fileUploadFirstAttemptFailed = Notification.Name("fileUploadFirstAttemptFailed")
 }
 
 #Preview {
