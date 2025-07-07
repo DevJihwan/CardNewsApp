@@ -28,8 +28,8 @@ struct MainView: View {
                         // 🚀 Primary Action - Large & Clear
                         primaryActionButton
                         
-                        // 📊 Status Card - Essential Information
-                        usageStatusCard
+                        // 📊 Status Card - Enhanced with detailed usage info
+                        enhancedUsageStatusCard
                         
                         // 📄 Recent Work - Card-based Organization
                         recentWorkSection
@@ -196,8 +196,8 @@ struct MainView: View {
         .buttonStyle(PlainButtonStyle())
     }
     
-    // MARK: - Usage Status Card - Clean & Professional
-    private var usageStatusCard: some View {
+    // MARK: - Enhanced Usage Status Card - With detailed usage information
+    private var enhancedUsageStatusCard: some View {
         VStack(alignment: .leading, spacing: 20) {
             // Header with Status - ZStack for top-right button positioning
             ZStack(alignment: .topTrailing) {
@@ -207,11 +207,21 @@ struct MainView: View {
                     ZStack {
                         Circle()
                             .fill(usageService.isSubscriptionActive ?
-                                  Color.green : Color.blue)
-                            .frame(width: 50, height: 50)
+                                  LinearGradient(
+                                    colors: [Color.green, Color.green.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                  ) :
+                                  LinearGradient(
+                                    colors: [Color.blue, Color.blue.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                  ))
+                            .frame(width: 56, height: 56)
+                            .shadow(color: (usageService.isSubscriptionActive ? Color.green : Color.blue).opacity(0.3), radius: 8, x: 0, y: 4)
                         
                         Image(systemName: usageService.isSubscriptionActive ?
-                              "checkmark.seal.fill" : "gift.fill")
+                              "crown.fill" : "gift.fill")
                             .font(.system(size: 24, weight: .semibold))
                             .foregroundColor(.white)
                     }
@@ -225,26 +235,9 @@ struct MainView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         
-                        if usageService.isSubscriptionActive {
-                            Text("\(usageService.currentSubscriptionTier.displayName) 플랜")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.secondary)
-                            
-                            Text("월 20개 카드뉴스 이용 가능")
-                                .font(.system(size: 15))
-                                .foregroundColor(.secondary)
-                        } else {
-                            HStack(spacing: 8) {
-                                Text("무료 체험:")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                
-                                Text("\(usageService.remainingFreeUsage)/2회 남음")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(usageService.remainingFreeUsage > 0 ?
-                                                   .blue : .red)
-                            }
-                        }
+                        Text(getSubscriptionStatusMessage())
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
                     }
                     
                     Spacer()
@@ -267,38 +260,110 @@ struct MainView: View {
                 }
             }
             
-            // Progress Bar (for free users only)
-            if !usageService.isSubscriptionActive {
-                VStack(alignment: .leading, spacing: 12) {
-                    let usedCount = 2 - usageService.remainingFreeUsage
-                    let progress = Double(usedCount) / 2.0
-                    
-                    // Progress Bar
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.gray.opacity(0.2))
-                                .frame(height: 8)
+            // Detailed Usage Information
+            if usageService.isSubscriptionActive {
+                // Subscription Usage Details
+                let stats = usageService.getUsageStats()
+                VStack(alignment: .leading, spacing: 16) {
+                    if usageService.currentSubscriptionTier == .basic {
+                        // Basic Plan: Show progress bar for 20 monthly limit
+                        usageProgressBar(
+                            title: "이달 사용량",
+                            current: stats.textCount,
+                            total: 20,
+                            color: stats.textCount >= 18 ? .orange : (stats.textCount >= 15 ? .yellow : .green),
+                            subtitle: "텍스트 카드뉴스"
+                        )
+                    } else {
+                        // Pro/Premium: Show unlimited usage with current month stats
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("무제한 이용")
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(.primary)
+                                    
+                                    Text("이번 달 사용량")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "infinity")
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(.green)
+                            }
                             
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(usageService.remainingFreeUsage > 0 ?
-                                      Color.blue : Color.red)
-                                .frame(width: geometry.size.width * progress, height: 8)
-                                .animation(.easeInOut(duration: 0.3), value: progress)
+                            // Usage Stats
+                            HStack(spacing: 24) {
+                                usageStatItem(
+                                    icon: "text.alignleft",
+                                    title: "텍스트",
+                                    value: "\(stats.textCount)개",
+                                    color: .blue
+                                )
+                                
+                                usageStatItem(
+                                    icon: "photo",
+                                    title: "이미지",
+                                    value: "\(stats.imageCount)개",
+                                    color: .purple
+                                )
+                                
+                                usageStatItem(
+                                    icon: "sum",
+                                    title: "총합",
+                                    value: "\(stats.totalCount)개",
+                                    color: .green
+                                )
+                            }
                         }
                     }
-                    .frame(height: 8)
                     
-                    // Status Text
-                    if usageService.remainingFreeUsage == 0 {
+                    // Days until reset
+                    HStack(spacing: 8) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+                        
+                        Text("\(usageService.daysUntilReset())일 후 사용량 리셋")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            } else {
+                // Free User: Show progress bar for 2 free attempts
+                let usedCount = 2 - usageService.remainingFreeUsage
+                
+                usageProgressBar(
+                    title: "무료 체험",
+                    current: usedCount,
+                    total: 2,
+                    color: usageService.remainingFreeUsage > 0 ? .blue : .red,
+                    subtitle: "카드뉴스 생성"
+                )
+                
+                // Status message for free users
+                if usageService.remainingFreeUsage == 0 {
+                    HStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.red)
+                        
                         Text("무료 체험이 완료되었습니다. 계속 이용하려면 구독해주세요.")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(.red)
-                    } else {
-                        Text("텍스트 카드뉴스 \(usedCount)/2회 사용")
-                            .font(.system(size: 15))
-                            .foregroundColor(.secondary)
                     }
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.red.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                            )
+                    )
                 }
             }
         }
@@ -308,6 +373,78 @@ struct MainView: View {
                 .fill(Color(.secondarySystemGroupedBackground))
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
+    }
+    
+    // MARK: - Usage Progress Bar Component
+    private func usageProgressBar(title: String, current: Int, total: Int, color: Color, subtitle: String? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    if let subtitle = subtitle {
+                        Text(subtitle)
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                Text("\(current)/\(total)")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(color)
+            }
+            
+            // Modern Progress Bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(height: 12)
+                    
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(
+                            LinearGradient(
+                                colors: [color, color.opacity(0.7)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: geometry.size.width * min(1.0, Double(current) / Double(total)), height: 12)
+                        .animation(.easeInOut(duration: 0.3), value: current)
+                }
+            }
+            .frame(height: 12)
+        }
+    }
+    
+    // MARK: - Usage Stat Item Component
+    private func usageStatItem(icon: String, title: String, value: String, color: Color) -> some View {
+        VStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(color)
+            }
+            
+            VStack(spacing: 2) {
+                Text(value)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                Text(title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
     
     // MARK: - Recent Work Section - Card-based Organization
@@ -609,6 +746,21 @@ struct MainView: View {
             }
         } else {
             return "무료 체험"
+        }
+    }
+    
+    private func getSubscriptionStatusMessage() -> String {
+        if usageService.isSubscriptionActive {
+            switch usageService.currentSubscriptionTier {
+            case .basic:
+                return "월 20개 텍스트 카드뉴스 이용 가능"
+            case .pro, .premium:
+                return "무제한 텍스트 및 이미지 카드뉴스"
+            default:
+                return ""
+            }
+        } else {
+            return "\(usageService.remainingFreeUsage)/2회 무료 체험 남음"
         }
     }
     
