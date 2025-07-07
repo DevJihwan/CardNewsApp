@@ -11,7 +11,7 @@ struct FileUploadView: View {
     @State private var showRetryAlert = false
     @State private var isSimulator = false
     @State private var isFirstLaunch = true // ✅ NEW: 첫 번째 실행 추적
-    @State private var expectingViewServiceError = false // ✅ NEW: View Service 에러 예상
+    @State private var fileSelectionInProgress = false // ✅ NEW: 파일 선택 진행 중 추적
     
     let preselectedFile: URL?
     
@@ -64,7 +64,8 @@ struct FileUploadView: View {
                         print("🔍 [FileUploadView] 사용자가 의도적으로 취소 버튼 클릭")
                         shouldStayOpen = false
                         preventDismiss = false
-                        expectingViewServiceError = false
+                        isFirstLaunch = false
+                        fileSelectionInProgress = false
                         dismiss()
                     }
                     .font(.system(size: 16, weight: .medium))
@@ -115,7 +116,7 @@ struct FileUploadView: View {
                 
                 shouldStayOpen = true
                 preventDismiss = true
-                expectingViewServiceError = false
+                fileSelectionInProgress = false
                 print("🔍 [FileUploadView] 뷰 나타남 - 모달 보호 활성화")
                 
                 if let file = preselectedFile {
@@ -126,20 +127,27 @@ struct FileUploadView: View {
                 }
             }
             .onDisappear {
-                // ✅ ENHANCED: View Service 에러 예상 여부에 따라 판단
+                print("🔍 [FileUploadView] onDisappear 호출")
+                print("🔍 [FileUploadView] 상태: shouldStayOpen=\(shouldStayOpen), preventDismiss=\(preventDismiss)")
+                print("🔍 [FileUploadView] 파일상태: isFileSelected=\(viewModel.isFileSelected), fileSelectionInProgress=\(fileSelectionInProgress)")
+                print("🔍 [FileUploadView] 런치상태: isFirstLaunch=\(isFirstLaunch)")
+                
+                // ✅ ENHANCED: 더 정교한 자동 재시도 로직
                 if shouldStayOpen && preventDismiss && !showingFilePicker {
-                    if expectingViewServiceError && isFirstLaunch {
-                        print("🔧 [FileUploadView] 첫 번째 시도 - View Service 에러로 인한 모달 닫힘 (예상됨)")
+                    if isFirstLaunch && !viewModel.isFileSelected && fileSelectionInProgress {
+                        print("🔧 [FileUploadView] 첫 번째 시도 실패 (파일 미선택) - 자동 재시도 예약")
                         
-                        // ✅ NEW: 자동 재시도 로직
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        // 자동 재시도
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                             if !viewModel.isFileSelected {
-                                print("🔄 [FileUploadView] 첫 번째 시도 실패 - 자동 재시도")
+                                print("🔄 [FileUploadView] 첫 번째 시도 실패 - 자동 재시도 실행")
                                 isFirstLaunch = false
-                                expectingViewServiceError = false
+                                fileSelectionInProgress = false
                                 showingFilePicker = true
                             }
                         }
+                    } else if viewModel.isFileSelected {
+                        print("✅ [FileUploadView] 파일 선택 완료 - View Service disconnect는 정상 (무시)")
                     } else {
                         print("⚠️ [FileUploadView] 예상치 못한 모달 닫힘 감지!")
                     }
@@ -151,12 +159,10 @@ struct FileUploadView: View {
                 print("🔍 [FileUploadView] showingFilePicker 변경: \(newValue)")
                 
                 if newValue {
-                    // ✅ NEW: 첫 번째 시도인 경우 View Service 에러 예상
+                    fileSelectionInProgress = true
                     if isFirstLaunch {
-                        expectingViewServiceError = true
-                        print("🔧 [FileUploadView] 첫 번째 파일 피커 열림 - View Service 에러 예상")
+                        print("🔧 [FileUploadView] 첫 번째 파일 피커 열림")
                     } else {
-                        expectingViewServiceError = false
                         print("🔧 [FileUploadView] 파일 피커 열림 (재시도)")
                     }
                 } else {
@@ -169,8 +175,8 @@ struct FileUploadView: View {
                 if newValue {
                     shouldStayOpen = true
                     preventDismiss = true
-                    expectingViewServiceError = false
-                    isFirstLaunch = false
+                    fileSelectionInProgress = false // 파일 선택 완료
+                    isFirstLaunch = false // 성공했으므로 더 이상 첫 번째가 아님
                     print("🔧 [FileUploadView] 파일 선택 완료 - 모달 보호 강화")
                 }
             }
@@ -204,13 +210,14 @@ struct FileUploadView: View {
         switch result {
         case .success(let url):
             print("✅ [FileUploadView] 파일 선택 성공: \(url.lastPathComponent)")
-            expectingViewServiceError = false
+            fileSelectionInProgress = false
             isFirstLaunch = false
             handleFileSelection(url)
             pickerAttemptCount = 0 // 성공 시 카운트 리셋
             
         case .failure(let error):
             print("❌ [FileUploadView] 파일 선택 실패: \(error)")
+            // 실패 시에는 fileSelectionInProgress를 유지하여 재시도 로직이 작동하도록 함
             handlePickerError(error)
         }
     }
@@ -242,6 +249,7 @@ struct FileUploadView: View {
             }
         } else {
             // 재시도 알림 표시
+            fileSelectionInProgress = false
             showRetryAlert = true
         }
     }
@@ -252,7 +260,7 @@ struct FileUploadView: View {
         // 충분한 지연 시간을 두고 재시도
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             isFirstLaunch = false
-            expectingViewServiceError = false
+            fileSelectionInProgress = false
             showingFilePicker = true
         }
     }
@@ -323,15 +331,6 @@ struct FileUploadView: View {
                                 Text("PDF 또는 Word 파일 (최대 10MB)")
                                     .font(.system(size: 16))
                                     .foregroundColor(.secondary)
-                                
-                                // ✅ NEW: 첫 번째 시도에 대한 안내
-                                if isFirstLaunch {
-                                    Text("첫 번째 시도 시 파일 선택기 초기화로 약간의 지연이 있을 수 있습니다")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.orange)
-                                        .multilineTextAlignment(.center)
-                                        .padding(.top, 4)
-                                }
                                 
                                 if isSimulator && pickerAttemptCount > 0 {
                                     Text("시뮬레이터에서 문제가 발생할 수 있습니다")
