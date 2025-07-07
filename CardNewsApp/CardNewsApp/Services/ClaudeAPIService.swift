@@ -32,20 +32,37 @@ class ClaudeAPIService: ObservableObject {
     // MARK: - API Key Management (Developer-focused)
     
     private func loadDeveloperAPIKey() {
+        // 🔍 디버깅: 모든 로딩 시도 과정 출력
+        print("🔍 [ClaudeAPIService] API 키 로딩 시작...")
+        
         // 1순위: 환경변수에서 로드 (배포 시 권장)
         if let envAPIKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !envAPIKey.isEmpty {
             apiKey = envAPIKey
             isConfigured = true
-            print("🔍 [ClaudeAPIService] 환경변수에서 API 키 로드 완료")
+            print("✅ [ClaudeAPIService] 환경변수에서 API 키 로드 완료")
+            print("🔍 [DEBUG] 환경변수 키 접두사: \(envAPIKey.prefix(10))...")
             return
+        } else {
+            print("❌ [DEBUG] 환경변수 ANTHROPIC_API_KEY 없음")
         }
         
         // 2순위: Info.plist에서 로드 (개발 시 사용)
         if let plistAPIKey = Bundle.main.object(forInfoDictionaryKey: "ANTHROPIC_API_KEY") as? String, !plistAPIKey.isEmpty {
-            apiKey = plistAPIKey
-            isConfigured = true
-            print("🔍 [ClaudeAPIService] Info.plist에서 API 키 로드 완료")
-            return
+            print("🔍 [DEBUG] Info.plist에서 발견한 값: '\(plistAPIKey)'")
+            
+            // $(ANTHROPIC_API_KEY) 형태인지 확인
+            if plistAPIKey.hasPrefix("$(") && plistAPIKey.hasSuffix(")") {
+                print("❌ [DEBUG] Info.plist 값이 변수 형태로 남아있음: \(plistAPIKey)")
+                print("💡 [DEBUG] Config.xcconfig 설정을 확인해주세요")
+            } else {
+                apiKey = plistAPIKey
+                isConfigured = true
+                print("✅ [ClaudeAPIService] Info.plist에서 API 키 로드 완료")
+                print("🔍 [DEBUG] plist 키 접두사: \(plistAPIKey.prefix(10))...")
+                return
+            }
+        } else {
+            print("❌ [DEBUG] Info.plist에서 ANTHROPIC_API_KEY를 찾을 수 없음")
         }
         
         // 3순위: UserDefaults에서 로드 (개발자가 런타임에 설정)
@@ -53,11 +70,15 @@ class ClaudeAPIService: ObservableObject {
         if !savedKey.isEmpty {
             apiKey = savedKey
             isConfigured = true
-            print("🔍 [ClaudeAPIService] UserDefaults에서 API 키 로드 완료")
+            print("✅ [ClaudeAPIService] UserDefaults에서 API 키 로드 완료")
+            print("🔍 [DEBUG] UserDefaults 키 접두사: \(savedKey.prefix(10))...")
             return
+        } else {
+            print("❌ [DEBUG] UserDefaults에서 claude_api_key 없음")
         }
         
-        print("⚠️ [ClaudeAPIService] API 키가 설정되지 않았습니다. 개발자가 설정해주세요.")
+        print("❌ [ClaudeAPIService] API 키가 설정되지 않았습니다")
+        print("💡 [DEBUG] Config.xcconfig 파일과 Build Configuration 설정을 확인해주세요")
         isConfigured = false
     }
     
@@ -80,6 +101,7 @@ class ClaudeAPIService: ObservableObject {
     ) async throws -> SummaryResult {
         
         guard isConfigured else {
+            print("❌ [ClaudeAPIService] API 키가 설정되지 않아 요청을 중단합니다")
             throw ClaudeAPIError.invalidAPIKey
         }
         
