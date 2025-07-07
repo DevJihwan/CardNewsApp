@@ -12,6 +12,7 @@ struct MainView: View {
     @State private var selectedSummary: SummaryResult?
     @State private var showAllSummaries = false
     @State private var showPaywall = false
+    @State private var fileSelectionSucceeded = false // ✅ NEW: 파일 선택 성공 추적
     
     var body: some View {
         NavigationStack {
@@ -60,6 +61,18 @@ struct MainView: View {
                 FileUploadView(preselectedFile: selectedFileURL)
                     .onAppear {
                         print("🔍 [MainView] FileUploadView 모달 표시")
+                        fileSelectionSucceeded = false // 리셋
+                    }
+                    .onDisappear {
+                        print("🔍 [MainView] FileUploadView 모달 사라짐 - fileSelectionSucceeded: \(fileSelectionSucceeded)")
+                        
+                        // ✅ NEW: 파일 선택 성공 후 모달이 닫혔다면 즉시 다시 열기
+                        if fileSelectionSucceeded {
+                            print("🔧 [MainView] 파일 선택 성공 후 의도치 않은 모달 닫힘 감지 - 즉시 재열기")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                showFileUpload = true
+                            }
+                        }
                     }
             }
             .sheet(isPresented: $showSummaryDetail) {
@@ -97,11 +110,28 @@ struct MainView: View {
             .onReceive(NotificationCenter.default.publisher(for: .subscriptionStatusChanged)) { _ in
                 // UI 자동 업데이트
             }
+            .onReceive(NotificationCenter.default.publisher(for: .fileUploadSuccess)) { _ in
+                // ✅ NEW: 파일 선택 성공 알림 수신
+                print("🎉 [MainView] 파일 선택 성공 알림 수신 - 모달 보호 활성화")
+                fileSelectionSucceeded = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .fileUploadUserCancelled)) { _ in
+                // ✅ NEW: 사용자 취소 알림 수신
+                print("🔍 [MainView] 사용자 취소 알림 수신 - 모달 보호 비활성화")
+                fileSelectionSucceeded = false
+            }
             .onReceive(NotificationCenter.default.publisher(for: .fileUploadFirstAttemptFailed)) { _ in
-                // ✅ NEW: 첫 번째 시도 실패 시 자동으로 FileUploadView 다시 열기
-                print("🔧 [MainView] 첫 번째 파일 업로드 시도 실패 감지 - 자동 재시도")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    showFileUpload = true
+                // ✅ IMPROVED: 더 엄격한 조건으로 재시도
+                print("🔧 [MainView] 첫 번째 파일 업로드 시도 실패 감지")
+                
+                // 파일 선택이 성공하지 않았을 때만 재시도
+                if !fileSelectionSucceeded {
+                    print("🔄 [MainView] 실제 실패 확인 - 자동 재시도")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        showFileUpload = true
+                    }
+                } else {
+                    print("✅ [MainView] 파일 선택 성공했으므로 재시도 생략")
                 }
             }
             .refreshable {
@@ -779,6 +809,9 @@ struct MainView: View {
             return
         }
         
+        // 파일 선택 상태 리셋
+        fileSelectionSucceeded = false
+        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             showFileUpload = true
         }
@@ -980,7 +1013,9 @@ struct SummaryHistoryView: View {
 
 extension Notification.Name {
     static let dismissAllModals = Notification.Name("dismissAllModals")
-    static let fileUploadFirstAttemptFailed = Notification.Name("fileUploadFirstAttemptFailed") // ✅ NEW
+    static let fileUploadFirstAttemptFailed = Notification.Name("fileUploadFirstAttemptFailed")
+    static let fileUploadSuccess = Notification.Name("fileUploadSuccess") // ✅ NEW
+    static let fileUploadUserCancelled = Notification.Name("fileUploadUserCancelled") // ✅ NEW
 }
 
 #Preview {
