@@ -10,6 +10,8 @@ struct FileUploadView: View {
     @State private var pickerAttemptCount = 0
     @State private var showRetryAlert = false
     @State private var isSimulator = false
+    @State private var isFilePickerActive = false // ✅ NEW: 파일 피커 활성 상태 추적
+    @State private var hasProcessedPickerResult = false // ✅ NEW: 결과 처리 완료 상태
     
     let preselectedFile: URL?
     
@@ -62,6 +64,7 @@ struct FileUploadView: View {
                         print("🔍 [FileUploadView] 사용자가 의도적으로 취소 버튼 클릭")
                         shouldStayOpen = false
                         preventDismiss = false
+                        isFilePickerActive = false
                         dismiss()
                     }
                     .font(.system(size: 16, weight: .medium))
@@ -69,9 +72,18 @@ struct FileUploadView: View {
                 }
             }
             .fullScreenCover(isPresented: $showingFilePicker) {
-                // fullScreenCover로 변경하여 View Service 문제 우회
+                // ✅ ENHANCED: onDismiss 콜백 추가
                 SafeDocumentPickerView { result in
                     handleFilePickerResult(result)
+                }
+            } onDismiss: {
+                // ✅ NEW: fullScreenCover 닫힘 시 상태 정리
+                print("🔍 [FileUploadView] fullScreenCover onDismiss 호출")
+                DispatchQueue.main.async {
+                    isFilePickerActive = false
+                    if !hasProcessedPickerResult {
+                        print("⚠️ [FileUploadView] 파일 선택 없이 피커 닫힘")
+                    }
                 }
             }
             .sheet(isPresented: $viewModel.showSummaryConfig) {
@@ -113,6 +125,8 @@ struct FileUploadView: View {
                 
                 shouldStayOpen = true
                 preventDismiss = true
+                isFilePickerActive = false
+                hasProcessedPickerResult = false
                 print("🔍 [FileUploadView] 뷰 나타남 - 모달 보호 활성화")
                 
                 if let file = preselectedFile {
@@ -123,20 +137,28 @@ struct FileUploadView: View {
                 }
             }
             .onDisappear {
-                // ✅ FIX: fullScreenCover 상태 확인하여 오탐 방지
-                if shouldStayOpen && preventDismiss && !showingFilePicker {
+                // ✅ ENHANCED: 더 정교한 상태 확인
+                let isPickerRelated = showingFilePicker || isFilePickerActive
+                
+                if shouldStayOpen && preventDismiss && !isPickerRelated {
                     print("⚠️ [FileUploadView] 예상치 못한 모달 닫힘 감지!")
+                    print("🔍 [FileUploadView] 상태: showingFilePicker=\(showingFilePicker), isFilePickerActive=\(isFilePickerActive), hasProcessedPickerResult=\(hasProcessedPickerResult)")
                 } else {
-                    print("✅ [FileUploadView] 정상적인 모달 닫힘 (fullScreenCover: \(showingFilePicker))")
+                    print("✅ [FileUploadView] 정상적인 모달 닫힘 (picker related: \(isPickerRelated))")
                 }
             }
             .onChange(of: showingFilePicker) { _, newValue in
                 print("🔍 [FileUploadView] showingFilePicker 변경: \(newValue)")
                 
-                // ✅ FIX: fullScreenCover 열릴 때 모달 보호 임시 해제
                 if newValue {
-                    // 파일 피커가 열릴 때는 임시로 모달 보호 해제
-                    print("🔧 [FileUploadView] 파일 피커 열림 - 모달 보호 임시 해제")
+                    // 파일 피커 열림
+                    isFilePickerActive = true
+                    hasProcessedPickerResult = false
+                    print("🔧 [FileUploadView] 파일 피커 열림 - 상태 추적 시작")
+                } else {
+                    // 파일 피커 닫힘
+                    print("🔧 [FileUploadView] 파일 피커 닫힘")
+                    // isFilePickerActive는 onDismiss나 결과 처리에서 변경
                 }
             }
             .onChange(of: viewModel.isFileSelected) { _, newValue in
@@ -161,16 +183,20 @@ struct FileUploadView: View {
                 }
             }
         }
-        .interactiveDismissDisabled(preventDismiss && !showingFilePicker)
+        .interactiveDismissDisabled(preventDismiss && !isFilePickerActive)
     }
     
     // MARK: - File Selection Result Processing
     private func handleFilePickerResult(_ result: Result<URL, Error>) {
         print("🔍 [FileUploadView] 파일 선택 결과 수신")
         
-        // ✅ FIX: 파일 피커 결과 처리 전에 상태 조정
-        DispatchQueue.main.async {
+        // ✅ ENHANCED: 결과 처리 상태 업데이트
+        hasProcessedPickerResult = true
+        
+        // ✅ FIX: 약간의 지연 후 상태 조정
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             showingFilePicker = false
+            isFilePickerActive = false
             processFileSelectionResult(result)
         }
     }
@@ -222,6 +248,10 @@ struct FileUploadView: View {
     private func retryFilePicker() {
         print("🔄 [FileUploadView] DocumentPicker 재시도")
         
+        // 상태 초기화
+        isFilePickerActive = false
+        hasProcessedPickerResult = false
+        
         // 충분한 지연 시간을 두고 재시도
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             showingFilePicker = true
@@ -264,6 +294,9 @@ struct FileUploadView: View {
             // Main Upload Button
             Button(action: {
                 print("🔍 [FileUploadView] 파일 선택 버튼 클릭")
+                
+                // 상태 초기화
+                hasProcessedPickerResult = false
                 
                 // 지연 시간 적용
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -702,9 +735,10 @@ struct SafeDocumentPickerView: View {
                 
                 print("📁 [SafeDocumentPicker] 결과 수신: \(result)")
                 
+                // ✅ ENHANCED: 더 안전한 결과 전달
                 DispatchQueue.main.async {
                     onResult(result)
-                    dismiss()
+                    // dismiss는 onResult 콜백에서 처리하도록 변경
                 }
             }
             .navigationTitle("파일 선택")
@@ -716,8 +750,9 @@ struct SafeDocumentPickerView: View {
                         hasProcessedResult = true
                         
                         print("📁 [SafeDocumentPicker] 사용자 취소")
-                        onResult(.failure(DocumentPickerError.userCancelled))
-                        dismiss()
+                        DispatchQueue.main.async {
+                            onResult(.failure(DocumentPickerError.userCancelled))
+                        }
                     }
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.secondary)
