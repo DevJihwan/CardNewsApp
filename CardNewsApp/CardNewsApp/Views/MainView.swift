@@ -13,7 +13,7 @@ struct MainView: View {
     @State private var showAllSummaries = false
     @State private var showPaywall = false
     @State private var fileSelectionSucceeded = false
-    @State private var lastSelectedFileURL: URL? // ✅ NEW: 마지막에 선택된 파일 보관
+    @State private var lastSelectedFileURL: URL?
     
     var body: some View {
         NavigationStack {
@@ -51,7 +51,7 @@ struct MainView: View {
                     .padding(.top, 20)
                 }
             }
-            .navigationTitle("CardNews")
+            .navigationTitle("QuickCard")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -59,7 +59,7 @@ struct MainView: View {
                 }
             }
             .sheet(isPresented: $showFileUpload) {
-                FileUploadView(preselectedFile: selectedFileURL ?? lastSelectedFileURL) // ✅ 마지막 선택 파일도 고려
+                FileUploadView(preselectedFile: selectedFileURL ?? lastSelectedFileURL)
                     .onAppear {
                         print("🔍 [MainView] FileUploadView 모달 표시")
                         fileSelectionSucceeded = false // 리셋
@@ -180,11 +180,11 @@ struct MainView: View {
             
             // Title & Description - Clear Hierarchy
             VStack(spacing: 12) {
-                Text("CardNews")
+                Text("QuickCard")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                 
-                Text("문서를 보기 쉬운 카드뉴스로\n빠르게 변환해드립니다")
+                Text("문서를 빠르고 쉬운 카드로\n즉시 변환해드립니다")
                     .font(.system(size: 18, weight: .medium))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
