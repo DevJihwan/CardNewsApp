@@ -585,6 +585,7 @@ struct ModernCardView: View {
         self.isCurrentCard = isCurrentCard
         
         print("🔍 [ModernCardView] 카드 \(card.cardNumber) 생성: '\(card.title)' (내용: \(card.content.prefix(50))...)")
+        print("🎨 [ModernCardView] 출력 스타일: \(config.outputStyle.displayName)")
     }
     
     var body: some View {
@@ -631,8 +632,9 @@ struct ModernCardView: View {
                         .foregroundColor(Color(hex: card.textColor ?? "#000000"))
                         .padding(.horizontal, 32)
                     
-                    // 이미지 플레이스홀더 (향후 AI 이미지 생성)
-                    if let imagePrompt = card.imagePrompt, !imagePrompt.isEmpty {
+                    // ✅ 이미지 플레이스홀더 - 출력 스타일에 따른 조건부 렌더링
+                    if config.outputStyle == .image,
+                       let imagePrompt = card.imagePrompt, !imagePrompt.isEmpty {
                         VStack(spacing: 12) {
                             RoundedRectangle(cornerRadius: 16)
                                 .fill(
@@ -726,6 +728,7 @@ struct ModernCardView: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isCurrentCard)
         .onAppear {
             print("🔍 [ModernCardView] 카드 \(card.cardNumber) 화면에 표시됨")
+            print("🎨 [ModernCardView] 이미지 표시 여부: \(config.outputStyle == .image ? "예" : "아니오")")
         }
     }
 }
