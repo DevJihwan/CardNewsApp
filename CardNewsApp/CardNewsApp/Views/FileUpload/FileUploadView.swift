@@ -12,7 +12,7 @@ struct FileUploadView: View {
     @State private var isSimulator = false
     @State private var isFirstLaunch = true
     @State private var fileSelectionInProgress = false
-    @State private var hasSuccessfullySelectedFile = false // ✅ NEW: 성공적 파일 선택 추적
+    @State private var hasSuccessfullySelectedFile = false
     
     let preselectedFile: URL?
     
@@ -63,6 +63,10 @@ struct FileUploadView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("취소") {
                         print("🔍 [FileUploadView] 사용자가 의도적으로 취소 버튼 클릭")
+                        
+                        // ✅ NEW: 사용자 취소 알림 전송
+                        NotificationCenter.default.post(name: .fileUploadUserCancelled, object: nil)
+                        
                         shouldStayOpen = false
                         preventDismiss = false
                         isFirstLaunch = false
@@ -180,8 +184,12 @@ struct FileUploadView: View {
                     shouldStayOpen = true
                     preventDismiss = true
                     fileSelectionInProgress = false // 파일 선택 완료
-                    hasSuccessfullySelectedFile = true // ✅ 성공적 파일 선택 마크
+                    hasSuccessfullySelectedFile = true // 성공적 파일 선택 마크
                     isFirstLaunch = false // 성공했으므로 더 이상 첫 번째가 아님
+                    
+                    // ✅ NEW: 파일 선택 성공 알림 전송
+                    NotificationCenter.default.post(name: .fileUploadSuccess, object: nil)
+                    
                     print("🔧 [FileUploadView] 파일 선택 완료 - 모달 보호 강화 및 성공 상태 설정")
                 }
             }
@@ -216,7 +224,7 @@ struct FileUploadView: View {
         case .success(let url):
             print("✅ [FileUploadView] 파일 선택 성공: \(url.lastPathComponent)")
             fileSelectionInProgress = false
-            hasSuccessfullySelectedFile = true // ✅ 성공 상태 즉시 설정
+            hasSuccessfullySelectedFile = true // 성공 상태 즉시 설정
             isFirstLaunch = false
             handleFileSelection(url)
             pickerAttemptCount = 0 // 성공 시 카운트 리셋
