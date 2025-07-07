@@ -1,1 +1,7 @@
-CardNewsApp/Config.xcconfig
+# API Keys and sensitive configuration
+Config.xcconfig
+*.xcconfig
+
+# Xcode user data
+CardNewsApp/CardNewsApp.xcodeproj/project.xcworkspace/xcuserdata/
+CardNewsApp/CardNewsApp.xcodeproj/xcuserdata/
