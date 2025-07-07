@@ -7,6 +7,9 @@ struct FileUploadView: View {
     @State private var preventDismiss = true
     @State private var showingFilePicker = false
     @State private var hasAppeared = false
+    @State private var pickerAttemptCount = 0
+    @State private var showRetryAlert = false
+    @State private var isSimulator = false
     
     let preselectedFile: URL?
     
@@ -69,14 +72,31 @@ struct FileUploadView: View {
                 DocumentPickerWrapper { url in
                     handleFileSelection(url)
                     showingFilePicker = false
+                    pickerAttemptCount = 0 // 성공 시 카운트 리셋
                 } onCancel: {
                     print("🔍 [FileUploadView] 파일 선택 취소됨")
                     showingFilePicker = false
+                } onViewServiceError: {
+                    print("⚠️ [FileUploadView] DocumentPicker View Service 에러 감지")
+                    showingFilePicker = false
+                    handlePickerViewServiceError()
                 }
             }
             .sheet(isPresented: $viewModel.showSummaryConfig) {
                 if let processedDocument = viewModel.processedDocument {
                     SummaryConfigView(processedDocument: processedDocument)
+                }
+            }
+            .alert("파일 선택 오류", isPresented: $showRetryAlert) {
+                Button("다시 시도") {
+                    retryFilePicker()
+                }
+                Button("취소", role: .cancel) { }
+            } message: {
+                if isSimulator {
+                    Text("시뮬레이터에서 첫 번째 파일 선택이 실패했습니다.\n이는 알려진 시뮬레이터 문제입니다.\n\n다시 시도하면 정상 작동합니다.")
+                } else {
+                    Text("파일 선택 중 오류가 발생했습니다.\n다시 시도해주세요.")
                 }
             }
             .alert("오류", isPresented: $viewModel.showError) {
@@ -89,6 +109,15 @@ struct FileUploadView: View {
             .onAppear {
                 guard !hasAppeared else { return }
                 hasAppeared = true
+                
+                // 시뮬레이터 환경 감지
+                #if targetEnvironment(simulator)
+                isSimulator = true
+                print("🔍 [FileUploadView] 시뮬레이터 환경 감지됨")
+                #else
+                isSimulator = false
+                print("🔍 [FileUploadView] 실제 기기 환경")
+                #endif
                 
                 shouldStayOpen = true
                 preventDismiss = true
@@ -147,6 +176,32 @@ struct FileUploadView: View {
         print("🔍 [FileUploadView] 파일 선택 처리 완료")
     }
     
+    // MARK: - DocumentPicker Error Handling
+    private func handlePickerViewServiceError() {
+        pickerAttemptCount += 1
+        print("🔧 [FileUploadView] DocumentPicker 시도 횟수: \(pickerAttemptCount)")
+        
+        if pickerAttemptCount < 3 && isSimulator {
+            // 시뮬레이터에서 자동 재시도
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                print("🔄 [FileUploadView] 시뮬레이터에서 자동 재시도 (\(pickerAttemptCount + 1)번째)")
+                retryFilePicker()
+            }
+        } else {
+            // 재시도 알림 표시
+            showRetryAlert = true
+        }
+    }
+    
+    private func retryFilePicker() {
+        print("🔄 [FileUploadView] DocumentPicker 재시도")
+        
+        // 충분한 지연 시간을 두고 재시도
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            showingFilePicker = true
+        }
+    }
+    
     // MARK: - Header Section - Clear Instructions
     private var headerSection: some View {
         VStack(spacing: 20) {
@@ -177,13 +232,18 @@ struct FileUploadView: View {
         }
     }
     
-    // MARK: - Upload Section - Large Touch Target
+    // MARK: - Upload Section - Enhanced for simulator compatibility
     private var uploadSection: some View {
         VStack(spacing: 20) {
             // Main Upload Button
             Button(action: {
                 print("🔍 [FileUploadView] 파일 선택 버튼 클릭")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                
+                // 시뮬레이터에서 더 긴 지연 시간 적용
+                let delay = isSimulator ? 0.3 : 0.1
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    pickerAttemptCount = 0
                     showingFilePicker = true
                 }
             }) {
@@ -206,9 +266,17 @@ struct FileUploadView: View {
                             .foregroundColor(.primary)
                         
                         if !viewModel.isFileSelected {
-                            Text("PDF 또는 Word 파일 (최대 10MB)")
-                                .font(.system(size: 16))
-                                .foregroundColor(.secondary)
+                            VStack(spacing: 4) {
+                                Text("PDF 또는 Word 파일 (최대 10MB)")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.secondary)
+                                
+                                if isSimulator && pickerAttemptCount > 0 {
+                                    Text("시뮬레이터에서 첫 시도가 실패할 수 있습니다")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.orange)
+                                }
+                            }
                         }
                     }
                 }
@@ -595,34 +663,39 @@ struct FileUploadView: View {
     }
 }
 
-// MARK: - Document Picker Wrapper
+// MARK: - Enhanced Document Picker Wrapper
 
 struct DocumentPickerWrapper: View {
     let onFileSelected: (URL) -> Void
     let onCancel: () -> Void
+    let onViewServiceError: () -> Void
     
     var body: some View {
         NavigationView {
-            StableDocumentPicker(onFileSelected: onFileSelected)
-                .navigationTitle("파일 선택")
-                .navigationBarTitleDisplayMode(.large)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("취소") {
-                            onCancel()
-                        }
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.secondary)
+            StableDocumentPicker(
+                onFileSelected: onFileSelected,
+                onViewServiceError: onViewServiceError
+            )
+            .navigationTitle("파일 선택")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("취소") {
+                        onCancel()
                     }
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.secondary)
                 }
+            }
         }
     }
 }
 
-// MARK: - Stable Document Picker
+// MARK: - Enhanced Stable Document Picker
 
 struct StableDocumentPicker: UIViewControllerRepresentable {
     let onFileSelected: (URL) -> Void
+    let onViewServiceError: () -> Void
     
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         let picker = UIDocumentPickerViewController(
@@ -633,6 +706,11 @@ struct StableDocumentPicker: UIViewControllerRepresentable {
         picker.delegate = context.coordinator
         picker.allowsMultipleSelection = false
         picker.shouldShowFileExtensions = true
+        
+        // 시뮬레이터 최적화 설정
+        #if targetEnvironment(simulator)
+        picker.modalPresentationStyle = .fullScreen
+        #endif
         
         return picker
     }
@@ -645,12 +723,16 @@ struct StableDocumentPicker: UIViewControllerRepresentable {
     
     class Coordinator: NSObject, UIDocumentPickerDelegate {
         let parent: StableDocumentPicker
+        private var hasHandledResult = false
         
         init(_ parent: StableDocumentPicker) {
             self.parent = parent
         }
         
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            guard !hasHandledResult else { return }
+            hasHandledResult = true
+            
             guard let url = urls.first else { return }
             
             let fileExtension = url.pathExtension.lowercased()
@@ -664,7 +746,21 @@ struct StableDocumentPicker: UIViewControllerRepresentable {
         }
         
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+            guard !hasHandledResult else { return }
+            hasHandledResult = true
+            
             print("🔍 [StableDocumentPicker] 사용자가 취소함")
+        }
+        
+        // View Controller 생명주기 관리
+        func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+            // View Service 에러로 인한 예기치 않은 dismiss 감지
+            if !hasHandledResult {
+                print("⚠️ [StableDocumentPicker] View Service 에러로 인한 예기치 않은 dismiss")
+                DispatchQueue.main.async {
+                    self.parent.onViewServiceError()
+                }
+            }
         }
     }
 }
