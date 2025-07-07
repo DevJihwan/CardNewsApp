@@ -72,7 +72,6 @@ struct FileUploadView: View {
                 // fullScreenCover로 변경하여 View Service 문제 우회
                 SafeDocumentPickerView { result in
                     handleFilePickerResult(result)
-                    showingFilePicker = false
                 }
             }
             .sheet(isPresented: $viewModel.showSummaryConfig) {
@@ -124,10 +123,20 @@ struct FileUploadView: View {
                 }
             }
             .onDisappear {
-                if shouldStayOpen && preventDismiss {
+                // ✅ FIX: fullScreenCover 상태 확인하여 오탐 방지
+                if shouldStayOpen && preventDismiss && !showingFilePicker {
                     print("⚠️ [FileUploadView] 예상치 못한 모달 닫힘 감지!")
                 } else {
-                    print("✅ [FileUploadView] 정상적인 모달 닫힘")
+                    print("✅ [FileUploadView] 정상적인 모달 닫힘 (fullScreenCover: \(showingFilePicker))")
+                }
+            }
+            .onChange(of: showingFilePicker) { _, newValue in
+                print("🔍 [FileUploadView] showingFilePicker 변경: \(newValue)")
+                
+                // ✅ FIX: fullScreenCover 열릴 때 모달 보호 임시 해제
+                if newValue {
+                    // 파일 피커가 열릴 때는 임시로 모달 보호 해제
+                    print("🔧 [FileUploadView] 파일 피커 열림 - 모달 보호 임시 해제")
                 }
             }
             .onChange(of: viewModel.isFileSelected) { _, newValue in
@@ -152,13 +161,18 @@ struct FileUploadView: View {
                 }
             }
         }
-        .interactiveDismissDisabled(preventDismiss)
+        .interactiveDismissDisabled(preventDismiss && !showingFilePicker)
     }
     
     // MARK: - File Selection Result Processing
     private func handleFilePickerResult(_ result: Result<URL, Error>) {
         print("🔍 [FileUploadView] 파일 선택 결과 수신")
-        processFileSelectionResult(result)
+        
+        // ✅ FIX: 파일 피커 결과 처리 전에 상태 조정
+        DispatchQueue.main.async {
+            showingFilePicker = false
+            processFileSelectionResult(result)
+        }
     }
     
     private func processFileSelectionResult(_ result: Result<URL, Error>) {
