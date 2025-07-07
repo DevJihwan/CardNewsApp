@@ -10,6 +10,8 @@ struct FileUploadView: View {
     @State private var pickerAttemptCount = 0
     @State private var showRetryAlert = false
     @State private var isSimulator = false
+    @State private var isFirstLaunch = true // ✅ NEW: 첫 번째 실행 추적
+    @State private var expectingViewServiceError = false // ✅ NEW: View Service 에러 예상
     
     let preselectedFile: URL?
     
@@ -62,6 +64,7 @@ struct FileUploadView: View {
                         print("🔍 [FileUploadView] 사용자가 의도적으로 취소 버튼 클릭")
                         shouldStayOpen = false
                         preventDismiss = false
+                        expectingViewServiceError = false
                         dismiss()
                     }
                     .font(.system(size: 16, weight: .medium))
@@ -69,7 +72,6 @@ struct FileUploadView: View {
                 }
             }
             .sheet(isPresented: $showingFilePicker) {
-                // ✅ MAJOR CHANGE: fullScreenCover → sheet로 변경하여 View Service 문제 해결
                 SafeDocumentPickerView { result in
                     handleFilePickerResult(result)
                 }
@@ -113,6 +115,7 @@ struct FileUploadView: View {
                 
                 shouldStayOpen = true
                 preventDismiss = true
+                expectingViewServiceError = false
                 print("🔍 [FileUploadView] 뷰 나타남 - 모달 보호 활성화")
                 
                 if let file = preselectedFile {
@@ -123,9 +126,23 @@ struct FileUploadView: View {
                 }
             }
             .onDisappear {
-                // ✅ SIMPLIFIED: sheet 사용으로 View Service 문제 해결됨
+                // ✅ ENHANCED: View Service 에러 예상 여부에 따라 판단
                 if shouldStayOpen && preventDismiss && !showingFilePicker {
-                    print("⚠️ [FileUploadView] 예상치 못한 모달 닫힘 감지!")
+                    if expectingViewServiceError && isFirstLaunch {
+                        print("🔧 [FileUploadView] 첫 번째 시도 - View Service 에러로 인한 모달 닫힘 (예상됨)")
+                        
+                        // ✅ NEW: 자동 재시도 로직
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            if !viewModel.isFileSelected {
+                                print("🔄 [FileUploadView] 첫 번째 시도 실패 - 자동 재시도")
+                                isFirstLaunch = false
+                                expectingViewServiceError = false
+                                showingFilePicker = true
+                            }
+                        }
+                    } else {
+                        print("⚠️ [FileUploadView] 예상치 못한 모달 닫힘 감지!")
+                    }
                 } else {
                     print("✅ [FileUploadView] 정상적인 모달 닫힘")
                 }
@@ -134,7 +151,14 @@ struct FileUploadView: View {
                 print("🔍 [FileUploadView] showingFilePicker 변경: \(newValue)")
                 
                 if newValue {
-                    print("🔧 [FileUploadView] 파일 피커 열림 (sheet)")
+                    // ✅ NEW: 첫 번째 시도인 경우 View Service 에러 예상
+                    if isFirstLaunch {
+                        expectingViewServiceError = true
+                        print("🔧 [FileUploadView] 첫 번째 파일 피커 열림 - View Service 에러 예상")
+                    } else {
+                        expectingViewServiceError = false
+                        print("🔧 [FileUploadView] 파일 피커 열림 (재시도)")
+                    }
                 } else {
                     print("🔧 [FileUploadView] 파일 피커 닫힘")
                 }
@@ -145,6 +169,8 @@ struct FileUploadView: View {
                 if newValue {
                     shouldStayOpen = true
                     preventDismiss = true
+                    expectingViewServiceError = false
+                    isFirstLaunch = false
                     print("🔧 [FileUploadView] 파일 선택 완료 - 모달 보호 강화")
                 }
             }
@@ -178,6 +204,8 @@ struct FileUploadView: View {
         switch result {
         case .success(let url):
             print("✅ [FileUploadView] 파일 선택 성공: \(url.lastPathComponent)")
+            expectingViewServiceError = false
+            isFirstLaunch = false
             handleFileSelection(url)
             pickerAttemptCount = 0 // 성공 시 카운트 리셋
             
@@ -223,6 +251,8 @@ struct FileUploadView: View {
         
         // 충분한 지연 시간을 두고 재시도
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            isFirstLaunch = false
+            expectingViewServiceError = false
             showingFilePicker = true
         }
     }
@@ -293,6 +323,15 @@ struct FileUploadView: View {
                                 Text("PDF 또는 Word 파일 (최대 10MB)")
                                     .font(.system(size: 16))
                                     .foregroundColor(.secondary)
+                                
+                                // ✅ NEW: 첫 번째 시도에 대한 안내
+                                if isFirstLaunch {
+                                    Text("첫 번째 시도 시 파일 선택기 초기화로 약간의 지연이 있을 수 있습니다")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.orange)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.top, 4)
+                                }
                                 
                                 if isSimulator && pickerAttemptCount > 0 {
                                     Text("시뮬레이터에서 문제가 발생할 수 있습니다")
