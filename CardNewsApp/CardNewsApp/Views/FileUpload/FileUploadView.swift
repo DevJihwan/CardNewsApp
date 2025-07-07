@@ -12,6 +12,7 @@ struct FileUploadView: View {
     @State private var isSimulator = false
     @State private var isFirstLaunch = true
     @State private var fileSelectionInProgress = false
+    @State private var hasSuccessfullySelectedFile = false // ✅ NEW: 성공적 파일 선택 추적
     
     let preselectedFile: URL?
     
@@ -66,6 +67,7 @@ struct FileUploadView: View {
                         preventDismiss = false
                         isFirstLaunch = false
                         fileSelectionInProgress = false
+                        hasSuccessfullySelectedFile = false
                         dismiss()
                     }
                     .font(.system(size: 16, weight: .medium))
@@ -117,6 +119,7 @@ struct FileUploadView: View {
                 shouldStayOpen = true
                 preventDismiss = true
                 fileSelectionInProgress = false
+                hasSuccessfullySelectedFile = false
                 print("🔍 [FileUploadView] 뷰 나타남 - 모달 보호 활성화")
                 
                 if let file = preselectedFile {
@@ -129,24 +132,28 @@ struct FileUploadView: View {
             .onDisappear {
                 print("🔍 [FileUploadView] onDisappear 호출")
                 print("🔍 [FileUploadView] 상태: shouldStayOpen=\(shouldStayOpen), preventDismiss=\(preventDismiss)")
-                print("🔍 [FileUploadView] 파일상태: isFileSelected=\(viewModel.isFileSelected), fileSelectionInProgress=\(fileSelectionInProgress)")
-                print("🔍 [FileUploadView] 런치상태: isFirstLaunch=\(isFirstLaunch)")
+                print("🔍 [FileUploadView] 파일상태: isFileSelected=\(viewModel.isFileSelected), hasSuccessfullySelectedFile=\(hasSuccessfullySelectedFile)")
+                print("🔍 [FileUploadView] 선택상태: fileSelectionInProgress=\(fileSelectionInProgress), isFirstLaunch=\(isFirstLaunch)")
                 
+                // ✅ IMPROVED: 파일 선택 성공 여부를 더 정확히 체크
                 if shouldStayOpen && preventDismiss && !showingFilePicker {
-                    if isFirstLaunch && !viewModel.isFileSelected && fileSelectionInProgress {
+                    // 파일이 성공적으로 선택되었거나 ViewModel에서 파일이 선택된 상태라면 정상 종료
+                    if hasSuccessfullySelectedFile || viewModel.isFileSelected {
+                        print("✅ [FileUploadView] 파일 선택 완료 - View Service disconnect는 정상 (무시)")
+                    }
+                    // 첫 번째 시도에서 파일 선택이 실제로 실패한 경우에만 재시도 요청
+                    else if isFirstLaunch && fileSelectionInProgress && !hasSuccessfullySelectedFile {
                         print("🔧 [FileUploadView] 첫 번째 시도 실패 감지 - MainView에 재시도 요청")
                         
-                        // ✅ NEW: MainView에게 재시도 요청 Notification 전송
+                        // MainView에게 재시도 요청 Notification 전송
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                             NotificationCenter.default.post(
                                 name: .fileUploadFirstAttemptFailed,
                                 object: nil
                             )
                         }
-                    } else if viewModel.isFileSelected {
-                        print("✅ [FileUploadView] 파일 선택 완료 - View Service disconnect는 정상 (무시)")
                     } else {
-                        print("⚠️ [FileUploadView] 예상치 못한 모달 닫힘 감지!")
+                        print("⚠️ [FileUploadView] 예상치 못한 모달 닫힘 (기타 사유)")
                     }
                 } else {
                     print("✅ [FileUploadView] 정상적인 모달 닫힘")
@@ -173,8 +180,9 @@ struct FileUploadView: View {
                     shouldStayOpen = true
                     preventDismiss = true
                     fileSelectionInProgress = false // 파일 선택 완료
+                    hasSuccessfullySelectedFile = true // ✅ 성공적 파일 선택 마크
                     isFirstLaunch = false // 성공했으므로 더 이상 첫 번째가 아님
-                    print("🔧 [FileUploadView] 파일 선택 완료 - 모달 보호 강화")
+                    print("🔧 [FileUploadView] 파일 선택 완료 - 모달 보호 강화 및 성공 상태 설정")
                 }
             }
             .onChange(of: viewModel.isProcessed) { _, newValue in
@@ -208,12 +216,14 @@ struct FileUploadView: View {
         case .success(let url):
             print("✅ [FileUploadView] 파일 선택 성공: \(url.lastPathComponent)")
             fileSelectionInProgress = false
+            hasSuccessfullySelectedFile = true // ✅ 성공 상태 즉시 설정
             isFirstLaunch = false
             handleFileSelection(url)
             pickerAttemptCount = 0 // 성공 시 카운트 리셋
             
         case .failure(let error):
             print("❌ [FileUploadView] 파일 선택 실패: \(error)")
+            hasSuccessfullySelectedFile = false
             // 실패 시에는 fileSelectionInProgress를 유지하여 재시도 로직이 작동하도록 함
             handlePickerError(error)
         }
@@ -258,6 +268,7 @@ struct FileUploadView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             isFirstLaunch = false
             fileSelectionInProgress = false
+            hasSuccessfullySelectedFile = false
             showingFilePicker = true
         }
     }
