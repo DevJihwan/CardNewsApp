@@ -845,12 +845,6 @@ enum DocumentPickerError: LocalizedError {
     }
 }
 
-// MARK: - Notification Extensions
-
-extension Notification.Name {
-    static let fileUploadFirstAttemptFailed = Notification.Name("fileUploadFirstAttemptFailed")
-}
-
 #Preview {
     FileUploadView()
 }
