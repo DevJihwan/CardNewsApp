@@ -97,6 +97,13 @@ struct MainView: View {
             .onReceive(NotificationCenter.default.publisher(for: .subscriptionStatusChanged)) { _ in
                 // UI 자동 업데이트
             }
+            .onReceive(NotificationCenter.default.publisher(for: .fileUploadFirstAttemptFailed)) { _ in
+                // ✅ NEW: 첫 번째 시도 실패 시 자동으로 FileUploadView 다시 열기
+                print("🔧 [MainView] 첫 번째 파일 업로드 시도 실패 감지 - 자동 재시도")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    showFileUpload = true
+                }
+            }
             .refreshable {
                 loadRecentSummaries()
             }
@@ -973,6 +980,7 @@ struct SummaryHistoryView: View {
 
 extension Notification.Name {
     static let dismissAllModals = Notification.Name("dismissAllModals")
+    static let fileUploadFirstAttemptFailed = Notification.Name("fileUploadFirstAttemptFailed") // ✅ NEW
 }
 
 #Preview {
