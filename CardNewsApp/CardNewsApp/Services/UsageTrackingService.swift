@@ -24,6 +24,7 @@ class UsageTrackingService: ObservableObject {
         static let subscriptionTier = "subscriptionTier"
         static let monthlyTextUsage = "monthlyTextUsage"
         static let monthlyImageUsage = "monthlyImageUsage"
+        static let monthlyWebtoonUsage = "monthlyWebtoonUsage"
         static let lastResetDate = "lastResetDate"
     }
     
@@ -57,7 +58,29 @@ class UsageTrackingService: ObservableObject {
             return canCreateFreeCardNews()
         case .basic:
             return monthlyUsage.textCount < 20
-        case .pro, .premium:
+        case .webtoon:
+            return false // 웹툰 전용 플랜은 텍스트 카드뉴스 생성 불가
+        case .pro:
+            return monthlyUsage.textCount < 20
+        case .premium:
+            return true // 무제한
+        }
+    }
+    
+    /// 웹툰 카드뉴스 생성 가능 여부 확인
+    func canCreateWebtoonCardNews() -> Bool {
+        if !isSubscriptionActive {
+            return false // 무료 사용자는 웹툰 생성 불가
+        }
+        
+        switch currentSubscriptionTier {
+        case .none, .basic:
+            return false
+        case .webtoon:
+            return monthlyUsage.webtoonCount < 10
+        case .pro:
+            return monthlyUsage.webtoonCount < 20
+        case .premium:
             return true // 무제한
         }
     }
@@ -69,10 +92,8 @@ class UsageTrackingService: ObservableObject {
         }
         
         switch currentSubscriptionTier {
-        case .none, .basic:
-            return false
-        case .pro:
-            return monthlyUsage.imageCount < 10
+        case .none, .basic, .webtoon, .pro:
+            return false // Premium만 이미지 생성 가능
         case .premium:
             return true // 무제한 (Fair Use Policy 적용)
         }
@@ -102,6 +123,22 @@ class UsageTrackingService: ObservableObject {
         saveMonthlyUsage()
         
         print("📈 [UsageTrackingService] 월간 텍스트 사용량: \(monthlyUsage.textCount)")
+        
+        // UI 업데이트 알림
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+        }
+    }
+    
+    /// 웹툰 카드뉴스 사용량 기록
+    func recordWebtoonCardNewsUsage() {
+        print("📊 [UsageTrackingService] 웹툰 카드뉴스 사용량 기록")
+        
+        // 웹툰은 구독자만 가능하므로 월간 사용량만 기록
+        monthlyUsage.webtoonCount += 1
+        saveMonthlyUsage()
+        
+        print("📈 [UsageTrackingService] 월간 웹툰 사용량: \(monthlyUsage.webtoonCount)")
         
         // UI 업데이트 알림
         DispatchQueue.main.async {
@@ -179,11 +216,13 @@ class UsageTrackingService: ObservableObject {
         // 월간 사용량 로드
         monthlyUsage.textCount = userDefaults.integer(forKey: Keys.monthlyTextUsage)
         monthlyUsage.imageCount = userDefaults.integer(forKey: Keys.monthlyImageUsage)
+        monthlyUsage.webtoonCount = userDefaults.integer(forKey: Keys.monthlyWebtoonUsage)
     }
     
     private func saveMonthlyUsage() {
         userDefaults.set(monthlyUsage.textCount, forKey: Keys.monthlyTextUsage)
         userDefaults.set(monthlyUsage.imageCount, forKey: Keys.monthlyImageUsage)
+        userDefaults.set(monthlyUsage.webtoonCount, forKey: Keys.monthlyWebtoonUsage)
     }
     
     private func checkMonthlyReset() {
@@ -207,6 +246,7 @@ class UsageTrackingService: ObservableObject {
 enum SubscriptionTier: String, CaseIterable {
     case none = "none"
     case basic = "basic"
+    case webtoon = "webtoon"
     case pro = "pro"
     case premium = "premium"
     
@@ -214,6 +254,7 @@ enum SubscriptionTier: String, CaseIterable {
         switch self {
         case .none: return "무료"
         case .basic: return "Basic"
+        case .webtoon: return "웹툰"
         case .pro: return "Pro"
         case .premium: return "Premium"
         }
@@ -223,7 +264,8 @@ enum SubscriptionTier: String, CaseIterable {
         switch self {
         case .none: return "무료"
         case .basic: return "$4.99"
-        case .pro: return "$9.99"
+        case .webtoon: return "$7.99"
+        case .pro: return "$12.99"
         case .premium: return "$19.99"
         }
     }
@@ -232,14 +274,24 @@ enum SubscriptionTier: String, CaseIterable {
         switch self {
         case .none: return "2개 (무료 체험)"
         case .basic: return "20개/월"
-        case .pro, .premium: return "무제한"
+        case .webtoon: return "없음"
+        case .pro: return "20개/월"
+        case .premium: return "무제한"
+        }
+    }
+    
+    var webtoonLimit: String {
+        switch self {
+        case .none, .basic: return "없음"
+        case .webtoon: return "10개/월"
+        case .pro: return "20개/월"
+        case .premium: return "무제한"
         }
     }
     
     var imageLimit: String {
         switch self {
-        case .none, .basic: return "없음"
-        case .pro: return "10개/월"
+        case .none, .basic, .webtoon, .pro: return "없음"
         case .premium: return "무제한*"
         }
     }
@@ -259,17 +311,28 @@ enum SubscriptionTier: String, CaseIterable {
                 "무제한 히스토리",
                 "우선 처리"
             ]
+        case .webtoon:
+            return [
+                "월 10개 웹툰 카드뉴스",
+                "웹툰 전용 스타일",
+                "고급 AI 웹툰 생성",
+                "무제한 히스토리",
+                "우선 처리"
+            ]
         case .pro:
             return [
-                "무제한 텍스트 카드뉴스",
-                "월 10개 이미지 카드뉴스",
-                "고급 AI 스타일",
+                "월 20개 텍스트 카드뉴스",
+                "월 20개 웹툰 카드뉴스",
+                "모든 스타일 지원",
+                "고급 AI 생성",
                 "PDF 내보내기",
                 "우선 지원"
             ]
         case .premium:
             return [
                 "모든 Pro 기능",
+                "무제한 텍스트 카드뉴스",
+                "무제한 웹툰 카드뉴스",
                 "무제한 이미지 카드뉴스*",
                 "프리미엄 AI 모델",
                 "고해상도 이미지",
@@ -283,10 +346,11 @@ enum SubscriptionTier: String, CaseIterable {
 /// 사용량 통계
 struct UsageStats {
     var textCount: Int = 0
+    var webtoonCount: Int = 0
     var imageCount: Int = 0
     
     var totalCount: Int {
-        return textCount + imageCount
+        return textCount + webtoonCount + imageCount
     }
 }
 
