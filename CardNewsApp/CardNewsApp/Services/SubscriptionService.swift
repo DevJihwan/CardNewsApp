@@ -13,6 +13,7 @@ class SubscriptionService: ObservableObject {
     // MARK: - Constants
     private let productIDs: [String] = [
         "cardnews_basic_monthly",
+        "cardnews_webtoon_monthly",
         "cardnews_pro_monthly", 
         "cardnews_premium_monthly"
     ]
@@ -278,6 +279,8 @@ class SubscriptionService: ObservableObject {
         switch productID {
         case "cardnews_basic_monthly":
             return .basic
+        case "cardnews_webtoon_monthly":
+            return .webtoon
         case "cardnews_pro_monthly":
             return .pro
         case "cardnews_premium_monthly":
@@ -363,6 +366,8 @@ extension Product {
         switch self.id {
         case "cardnews_basic_monthly":
             return .basic
+        case "cardnews_webtoon_monthly":
+            return .webtoon
         case "cardnews_pro_monthly":
             return .pro
         case "cardnews_premium_monthly":
