@@ -152,7 +152,7 @@ struct PaywallView: View {
     // MARK: - Benefits Section
     private var benefitsSection: some View {
         VStack(alignment: .leading, spacing: 24) {
-            Text("Basic 플랜의 혜택")
+            Text("QuickCard 플랜의 혜택")
                 .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -163,29 +163,29 @@ struct PaywallView: View {
             ], spacing: 20) {
                 benefitCard(
                     icon: "rectangle.3.group.fill",
-                    title: "월 20개 카드뉴스",
-                    description: "텍스트 카드뉴스\n무제한 생성",
+                    title: "다양한 카드뉴스",
+                    description: "텍스트, 웹툰, 이미지\\n다양한 형식 지원",
                     color: .blue
                 )
                 
                 benefitCard(
                     icon: "paintbrush.pointed.fill",
-                    title: "모든 디자인 스타일",
-                    description: "웹툰, 텍스트, 이미지\n다양한 템플릿",
+                    title: "전용 디자인 스타일",
+                    description: "각 플랜별 최적화된\\n고급 템플릿 제공",
                     color: .purple
                 )
                 
                 benefitCard(
                     icon: "clock.fill",
                     title: "우선 처리",
-                    description: "빠른 생성 속도로\n시간 절약",
+                    description: "빠른 생성 속도로\\n시간 절약",
                     color: .green
                 )
                 
                 benefitCard(
                     icon: "folder.fill",
                     title: "무제한 히스토리",
-                    description: "모든 작업 내역\n영구 저장",
+                    description: "모든 작업 내역\\n영구 저장",
                     color: .orange
                 )
             }
@@ -200,11 +200,14 @@ struct PaywallView: View {
                 .foregroundColor(.primary)
             
             VStack(spacing: 16) {
-                // Basic Plan (Available)
+                // Basic Plan
                 subscriptionPlanCard(tier: .basic, isEnabled: true)
                 
-                // Pro Plan (Coming Soon)
-                subscriptionPlanCard(tier: .pro, isEnabled: false)
+                // Webtoon Plan (NEW)
+                subscriptionPlanCard(tier: .webtoon, isEnabled: true)
+                
+                // Pro Plan
+                subscriptionPlanCard(tier: .pro, isEnabled: true)
                 
                 // Premium Plan (Coming Soon)
                 subscriptionPlanCard(tier: .premium, isEnabled: false)
@@ -304,8 +307,8 @@ struct PaywallView: View {
             
             VStack(alignment: .leading, spacing: 10) {
                 Text("• 2회 무료 카드뉴스 생성을 모두 사용하셨습니다")
-                Text("• 계속 사용하려면 Basic 구독이 필요합니다")
-                Text("• 구독 시 바로 월 20개 카드뉴스 이용 가능합니다")
+                Text("• 계속 사용하려면 구독이 필요합니다")
+                Text("• 용도에 맞는 플랜을 선택해주세요")
             }
             .font(.system(size: 16))
             .foregroundColor(.secondary)
@@ -325,7 +328,7 @@ struct PaywallView: View {
     // MARK: - Footer Section
     private var footerSection: some View {
         VStack(spacing: 16) {
-            Text("Basic 구독으로 더 많은 기능을 이용하세요")
+            Text("QuickCard로 더 많은 기능을 이용하세요")
                 .font(.system(size: 16))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -414,7 +417,7 @@ struct PaywallView: View {
                             .font(.system(size: 20, weight: .bold))
                             .foregroundColor(isEnabled ? .primary : .secondary)
                         
-                        if tier == .basic && isEnabled {
+                        if isEnabled {
                             Text("이용 가능")
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.white)
@@ -424,7 +427,7 @@ struct PaywallView: View {
                                     Capsule()
                                         .fill(Color.green)
                                 )
-                        } else if !isEnabled {
+                        } else {
                             Text("준비 중")
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.white)
@@ -448,9 +451,15 @@ struct PaywallView: View {
                             .font(.system(size: 16))
                             .foregroundColor(isEnabled ? .secondary : .secondary.opacity(0.6))
                         
-                        Text("이미지 카드뉴스: \(tier.imageLimit)")
+                        Text("웹툰 카드뉴스: \(tier.webtoonLimit)")
                             .font(.system(size: 16))
                             .foregroundColor(isEnabled ? .secondary : .secondary.opacity(0.6))
+                        
+                        if tier == .premium {
+                            Text("이미지 카드뉴스: \(tier.imageLimit)")
+                                .font(.system(size: 16))
+                                .foregroundColor(isEnabled ? .secondary : .secondary.opacity(0.6))
+                        }
                     }
                 }
                 
@@ -545,20 +554,20 @@ struct PaywallView: View {
         case .freeUsageExhausted:
             return "무료 체험 완료"
         case .imageGenerationRequested:
-            return "더 많은 기능이\n곧 출시됩니다"
+            return "더 많은 기능이\\n곧 출시됩니다"
         case .upgradePrompt:
-            return "Basic 플랜으로\n시작해보세요"
+            return "QuickCard 구독으로\\n시작해보세요"
         }
     }
     
     private func getHeaderDescription() -> String {
         switch triggerReason {
         case .freeUsageExhausted:
-            return "2회 무료 생성을 모두 사용하셨습니다.\nBasic 플랜으로 월 20개 카드뉴스를 만들어보세요."
+            return "2회 무료 생성을 모두 사용하셨습니다.\\n용도에 맞는 플랜을 선택해보세요."
         case .imageGenerationRequested:
-            return "이미지 생성 기능은 곧 Pro 플랜과 함께 출시됩니다.\n지금은 Basic 플랜으로 텍스트 카드뉴스를 이용해보세요."
+            return "이미지 생성 기능은 곧 Premium 플랜과 함께 출시됩니다.\\n지금은 다른 플랜으로 카드뉴스를 이용해보세요."
         case .upgradePrompt:
-            return "월 20개 텍스트 카드뉴스와 다양한 스타일로\n더욱 풍성한 콘텐츠를 만들어보세요."
+            return "텍스트, 웹툰, 이미지 카드뉴스로\\n더욱 풍성한 콘텐츠를 만들어보세요."
         }
     }
     
@@ -625,6 +634,8 @@ struct PaywallView: View {
         switch tier {
         case .basic:
             return "cardnews_basic_monthly"
+        case .webtoon:
+            return "cardnews_webtoon_monthly"
         case .pro:
             return "cardnews_pro_monthly"
         case .premium:
