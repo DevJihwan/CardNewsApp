@@ -51,8 +51,7 @@ struct MainView: View {
                     .padding(.top, 20)
                 }
             }
-            .navigationTitle("QuickCard")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarHidden(true)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     subscriptionButton
@@ -160,6 +159,13 @@ struct MainView: View {
     // MARK: - Header Section - Clear Value Proposition
     private var headerSection: some View {
         VStack(spacing: 20) {
+            // 우측 상단에 구독 버튼 배치
+            HStack {
+                Spacer()
+                subscriptionButton
+            }
+            .padding(.top, 10)
+            
             // App Icon - Professional & Clear
             ZStack {
                 RoundedRectangle(cornerRadius: 20)
