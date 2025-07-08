@@ -51,44 +51,9 @@ struct MainView: View {
                     .padding(.top, 20)
                 }
             }
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("QuickCard")
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    // 앱 아이콘을 네비게이션 바 중앙에 배치
-                    HStack {
-                        Spacer()
-                        
-                        // 앱 아이콘 사용
-                        if let appIcon = getAppIcon() {
-                            Image(uiImage: appIcon)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 32, height: 32)
-                                .clipShape(RoundedRectangle(cornerRadius: 7))
-                        } else {
-                            // 앱 아이콘을 불러올 수 없는 경우 기본 아이콘 사용
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 7)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [Color(red: 0.2, green: 0.4, blue: 0.8), Color(red: 0.1, green: 0.3, blue: 0.7)],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .frame(width: 32, height: 32)
-                                
-                                Image(systemName: "doc.text.below.ecg")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.white)
-                            }
-                        }
-                        
-                        Spacer()
-                    }
-                }
-                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     subscriptionButton
                 }
@@ -190,19 +155,6 @@ struct MainView: View {
                 loadRecentSummaries()
             }
         }
-    }
-    
-    // MARK: - Get App Icon
-    private func getAppIcon() -> UIImage? {
-        // 앱 아이콘을 번들에서 가져오기
-        guard let iconsDictionary = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
-              let primaryIconsDictionary = iconsDictionary["CFBundlePrimaryIcon"] as? [String: Any],
-              let iconFiles = primaryIconsDictionary["CFBundleIconFiles"] as? [String],
-              let lastIcon = iconFiles.last else {
-            return nil
-        }
-        
-        return UIImage(named: lastIcon)
     }
     
     // MARK: - Header Section - Clear Value Proposition
@@ -842,6 +794,7 @@ struct MainView: View {
         if usageService.isSubscriptionActive {
             switch usageService.currentSubscriptionTier {
             case .basic: return "Basic 구독중"
+            case .webtoon: return "웹툰 구독중"
             case .pro: return "Pro 구독중"
             case .premium: return "Premium 구독중"
             default: return "구독중"
@@ -856,7 +809,11 @@ struct MainView: View {
             switch usageService.currentSubscriptionTier {
             case .basic:
                 return "월 20개 텍스트 카드뉴스 이용 가능"
-            case .pro, .premium:
+            case .webtoon:
+                return "월 10개 웹툰 카드뉴스 이용 가능"
+            case .pro:
+                return "텍스트 20개 + 웹툰 20개 이용 가능"
+            case .premium:
                 return "무제한 텍스트 및 이미지 카드뉴스"
             default:
                 return ""
