@@ -29,7 +29,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		EE4972462E0B855B00D63C80 /* CardNewsApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CardNewsApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EE4972462E0B855B00D63C80 /* QuickCard.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuickCard.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE4972562E0B855C00D63C80 /* CardNewsAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CardNewsAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE4972602E0B855C00D63C80 /* CardNewsAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CardNewsAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE4974F02E1B7C9700D63C80 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
@@ -107,7 +107,7 @@
 		EE4972472E0B855B00D63C80 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				EE4972462E0B855B00D63C80 /* CardNewsApp.app */,
+				EE4972462E0B855B00D63C80 /* QuickCard.app */,
 				EE4972562E0B855C00D63C80 /* CardNewsAppTests.xctest */,
 				EE4972602E0B855C00D63C80 /* CardNewsAppUITests.xctest */,
 			);
@@ -143,8 +143,8 @@
 			packageProductDependencies = (
 				EE4972902E0B998A00D63C80 /* ZIPFoundation */,
 			);
-			productName = CardNewsApp;
-			productReference = EE4972462E0B855B00D63C80 /* CardNewsApp.app */;
+			productName = QuickCard;
+			productReference = EE4972462E0B855B00D63C80 /* QuickCard.app */;
 			productType = "com.apple.product-type.application";
 		};
 		EE4972552E0B855C00D63C80 /* CardNewsAppTests */ = {
@@ -444,7 +444,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.devjihwan.cardnewsapp.CardNewsApp;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = QuickCard;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -473,7 +473,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.devjihwan.cardnewsapp.CardNewsApp;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = QuickCard;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -494,7 +494,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CardNewsApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CardNewsApp";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QuickCard.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/QuickCard";
 			};
 			name = Debug;
 		};
@@ -512,7 +512,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CardNewsApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CardNewsApp";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QuickCard.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/QuickCard";
 			};
 			name = Release;
 		};
