@@ -164,28 +164,28 @@ struct PaywallView: View {
                 benefitCard(
                     icon: "rectangle.3.group.fill",
                     title: "다양한 카드뉴스",
-                    description: "텍스트, 웹툰, 이미지\\n다양한 형식 지원",
+                    description: "텍스트, 웹툰, 이미지\n다양한 형식 지원",
                     color: .blue
                 )
                 
                 benefitCard(
                     icon: "paintbrush.pointed.fill",
                     title: "전용 디자인 스타일",
-                    description: "각 플랜별 최적화된\\n고급 템플릿 제공",
+                    description: "각 플랜별 최적화된\n고급 템플릿 제공",
                     color: .purple
                 )
                 
                 benefitCard(
                     icon: "clock.fill",
                     title: "우선 처리",
-                    description: "빠른 생성 속도로\\n시간 절약",
+                    description: "빠른 생성 속도로\n시간 절약",
                     color: .green
                 )
                 
                 benefitCard(
                     icon: "folder.fill",
                     title: "무제한 히스토리",
-                    description: "모든 작업 내역\\n영구 저장",
+                    description: "모든 작업 내역\n영구 저장",
                     color: .orange
                 )
             }
@@ -203,11 +203,11 @@ struct PaywallView: View {
                 // Basic Plan
                 subscriptionPlanCard(tier: .basic, isEnabled: true)
                 
-                // Webtoon Plan (NEW)
-                subscriptionPlanCard(tier: .webtoon, isEnabled: true)
+                // Webtoon Plan (Coming Soon)
+                subscriptionPlanCard(tier: .webtoon, isEnabled: false)
                 
-                // Pro Plan
-                subscriptionPlanCard(tier: .pro, isEnabled: true)
+                // Pro Plan (Coming Soon)
+                subscriptionPlanCard(tier: .pro, isEnabled: false)
                 
                 // Premium Plan (Coming Soon)
                 subscriptionPlanCard(tier: .premium, isEnabled: false)
@@ -554,20 +554,20 @@ struct PaywallView: View {
         case .freeUsageExhausted:
             return "무료 체험 완료"
         case .imageGenerationRequested:
-            return "더 많은 기능이\\n곧 출시됩니다"
+            return "더 많은 기능이\n곧 출시됩니다"
         case .upgradePrompt:
-            return "QuickCard 구독으로\\n시작해보세요"
+            return "QuickCard 구독으로\n시작해보세요"
         }
     }
     
     private func getHeaderDescription() -> String {
         switch triggerReason {
         case .freeUsageExhausted:
-            return "2회 무료 생성을 모두 사용하셨습니다.\\n용도에 맞는 플랜을 선택해보세요."
+            return "2회 무료 생성을 모두 사용하셨습니다.\n용도에 맞는 플랜을 선택해보세요."
         case .imageGenerationRequested:
-            return "이미지 생성 기능은 곧 Premium 플랜과 함께 출시됩니다.\\n지금은 다른 플랜으로 카드뉴스를 이용해보세요."
+            return "이미지 생성 기능은 곧 Premium 플랜과 함께 출시됩니다.\n지금은 다른 플랜으로 카드뉴스를 이용해보세요."
         case .upgradePrompt:
-            return "텍스트, 웹툰, 이미지 카드뉴스로\\n더욱 풍성한 콘텐츠를 만들어보세요."
+            return "텍스트, 웹툰, 이미지 카드뉴스로\n더욱 풍성한 콘텐츠를 만들어보세요."
         }
     }
     
