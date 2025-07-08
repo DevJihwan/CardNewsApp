@@ -51,9 +51,28 @@ struct MainView: View {
                     .padding(.top, 20)
                 }
             }
-            .navigationTitle("QuickCard")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    // 앱 아이콘을 네비게이션 바 중앙에 배치
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color(red: 0.2, green: 0.4, blue: 0.8), Color(red: 0.1, green: 0.3, blue: 0.7)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 32, height: 32)
+                            .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 1)
+                        
+                        Image(systemName: "doc.text.below.ecg")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     subscriptionButton
                 }
