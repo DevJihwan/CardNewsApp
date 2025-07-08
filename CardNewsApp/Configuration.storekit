@@ -67,11 +67,11 @@
       "localizations" : [
         {
           "description" : "카드뉴스 앱 구독 서비스",
-          "displayName" : "CardNews 구독",
+          "displayName" : "QuickCard 구독",
           "locale" : "ko"
         }
       ],
-      "name" : "CardNews Subscriptions",
+      "name" : "QuickCard Subscriptions",
       "subscriptions" : [
         {
           "adHocOffers" : [
@@ -105,14 +105,39 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "9.99",
+          "displayPrice" : "7.99",
           "familyShareable" : false,
           "groupNumber" : 2,
+          "internalID" : "cardnews_webtoon_monthly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "월 10개 웹툰 카드뉴스, 웹툰 전용 스타일, 고급 AI 웹툰 생성",
+              "displayName" : "웹툰 구독",
+              "locale" : "ko"
+            }
+          ],
+          "productID" : "cardnews_webtoon_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Webtoon Monthly",
+          "subscriptionGroupID" : "cardnews_subscription_group",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "12.99",
+          "familyShareable" : false,
+          "groupNumber" : 3,
           "internalID" : "cardnews_pro_monthly",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "무제한 텍스트 + 월 10개 이미지 카드뉴스, 고급 AI 스타일",
+              "description" : "텍스트 20개 + 웹툰 20개 카드뉴스, 모든 기능 지원, 고급 AI 스타일",
               "displayName" : "Pro 구독",
               "locale" : "ko"
             }
@@ -132,7 +157,7 @@
           ],
           "displayPrice" : "19.99",
           "familyShareable" : false,
-          "groupNumber" : 3,
+          "groupNumber" : 4,
           "internalID" : "cardnews_premium_monthly",
           "introductoryOffer" : null,
           "localizations" : [
