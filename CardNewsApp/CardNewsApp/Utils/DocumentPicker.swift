@@ -54,9 +54,45 @@ struct DocumentPicker: UIViewControllerRepresentable {
             
             print("✅ [DocumentPicker] 선택된 파일: \(url.lastPathComponent)")
             
-            // 🔧 즉시 콜백 실행 (뷰 서비스 종료 전에)
-            self.parent.onFileSelected?(url)
-            print("✅ [DocumentPicker] 콜백 완료")
+            // 🔧 Security-Scoped Resource 접근 시작
+            guard url.startAccessingSecurityScopedResource() else {
+                print("❌ [DocumentPicker] Security-Scoped Resource 접근 실패")
+                return
+            }
+            
+            print("🔐 [DocumentPicker] Security-Scoped Resource 접근 성공")
+            
+            // 파일을 임시 위치로 복사
+            let tempDirectory = FileManager.default.temporaryDirectory
+            let tempFileName = UUID().uuidString + "." + fileExtension
+            let tempURL = tempDirectory.appendingPathComponent(tempFileName)
+            
+            do {
+                // 기존 임시 파일이 있다면 삭제
+                if FileManager.default.fileExists(atPath: tempURL.path) {
+                    try FileManager.default.removeItem(at: tempURL)
+                }
+                
+                // 원본 파일을 임시 위치로 복사
+                try FileManager.default.copyItem(at: url, to: tempURL)
+                print("✅ [DocumentPicker] 파일 복사 성공: \(tempURL.lastPathComponent)")
+                
+                // Security-Scoped Resource 접근 종료
+                url.stopAccessingSecurityScopedResource()
+                print("🔓 [DocumentPicker] Security-Scoped Resource 접근 종료")
+                
+                // 복사된 임시 파일 URL로 콜백 실행
+                self.parent.onFileSelected?(tempURL)
+                print("✅ [DocumentPicker] 콜백 완료 (임시 파일)")
+                
+            } catch {
+                print("❌ [DocumentPicker] 파일 복사 실패: \(error)")
+                // 실패해도 Security-Scoped Resource 접근 종료
+                url.stopAccessingSecurityScopedResource()
+                
+                // 실패 시 원본 URL로 콜백 시도 (백업)
+                self.parent.onFileSelected?(url)
+            }
         }
         
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
