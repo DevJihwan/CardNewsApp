@@ -65,26 +65,52 @@ class FileUploadViewModel: ObservableObject {
         }
     }
     
-    // 파일 검증 함수
+    // ⭐️ IMPROVED: 파일 검증 함수 (Security-Scoped Resource 문제 해결)
     private func validateFile(_ url: URL) -> Bool {
+        print("🔍 [ViewModel] 파일 검증 시작: \(url.lastPathComponent)")
+        
         do {
-            // 파일 접근 권한 확인
-            guard url.startAccessingSecurityScopedResource() else {
+            // ⭐️ CRITICAL: 앱 샌드박스 내 파일인지 확인
+            let isInAppSandbox = isFileInAppSandbox(url: url)
+            print("🔍 [ViewModel] 앱 샌드박스 내 파일: \(isInAppSandbox)")
+            
+            var needsSecurityScoped = false
+            
+            if !isInAppSandbox {
+                // 앱 샌드박스 외부 파일인 경우에만 Security-Scoped Resource 접근 시도
+                guard url.startAccessingSecurityScopedResource() else {
+                    showErrorMessage("파일에 접근할 수 없습니다.")
+                    return false
+                }
+                needsSecurityScoped = true
+                print("🔐 [ViewModel] Security-Scoped Resource 접근 시작")
+            } else {
+                print("✅ [ViewModel] 앱 샌드박스 내 파일 - Security-Scoped 접근 불필요")
+            }
+            
+            // 함수 종료 시 Security-Scoped Resource 정리
+            defer {
+                if needsSecurityScoped {
+                    url.stopAccessingSecurityScopedResource()
+                    print("🔓 [ViewModel] Security-Scoped Resource 접근 종료")
+                }
+            }
+            
+            // 파일 존재 확인
+            guard FileManager.default.fileExists(atPath: url.path) else {
                 showErrorMessage("파일에 접근할 수 없습니다.")
                 return false
             }
             
-            // 파일 존재 확인
-            guard try url.checkResourceIsReachable() else {
-                url.stopAccessingSecurityScopedResource()
-                showErrorMessage("파일에 접근할 수 없습니다.")
+            // 파일 읽기 권한 확인
+            guard FileManager.default.isReadableFile(atPath: url.path) else {
+                showErrorMessage("파일 읽기 권한이 없습니다.")
                 return false
             }
             
             // 파일 확장자 확인
             let fileExtension = url.pathExtension.lowercased()
             guard supportedExtensions.contains(fileExtension) else {
-                url.stopAccessingSecurityScopedResource()
                 showErrorMessage("지원하지 않는 파일 형식입니다.\n지원 형식: PDF, DOCX")
                 return false
             }
@@ -94,24 +120,44 @@ class FileUploadViewModel: ObservableObject {
             let fileSize = resourceValues.fileSize ?? 0
             
             guard fileSize <= maxFileSize else {
-                url.stopAccessingSecurityScopedResource()
                 showErrorMessage("파일 크기가 너무 큽니다.\n최대 크기: 10MB")
                 return false
             }
             
             guard fileSize > 0 else {
-                url.stopAccessingSecurityScopedResource()
                 showErrorMessage("파일이 비어있습니다.")
                 return false
             }
             
-            return true
+            // 실제 파일 읽기 테스트
+            do {
+                let _ = try Data(contentsOf: url, options: .mappedIfSafe)
+                print("✅ [ViewModel] 파일 검증 성공: \(fileSize) bytes")
+                return true
+            } catch {
+                print("❌ [ViewModel] 파일 읽기 테스트 실패: \(error)")
+                showErrorMessage("파일을 읽을 수 없습니다.")
+                return false
+            }
             
         } catch {
-            url.stopAccessingSecurityScopedResource()
+            print("❌ [ViewModel] 파일 검증 중 오류: \(error)")
             showErrorMessage("파일 정보를 읽는 중 오류가 발생했습니다.\n\(error.localizedDescription)")
             return false
         }
+    }
+    
+    // ⭐️ NEW: 파일이 앱 샌드박스에 있는지 확인
+    private func isFileInAppSandbox(url: URL) -> Bool {
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
+        let sandboxIdentifier = "com.devjihwan.cardnewsapp.CardNewsApp"
+        
+        // 경로에 앱 식별자가 포함되어 있는지 확인
+        return url.path.contains(bundleIdentifier) || 
+               url.path.contains(sandboxIdentifier) ||
+               url.path.contains("/tmp/") ||
+               url.path.contains("/Documents/") ||
+               url.path.contains("/Library/")
     }
     
     // 파일 정보 업데이트
@@ -191,9 +237,13 @@ class FileUploadViewModel: ObservableObject {
         showError = true
     }
     
-    // 파일 선택 초기화
+    // ⭐️ IMPROVED: 파일 선택 초기화 (Security-Scoped Resource 정리 개선)
     func clearSelectedFile() {
-        selectedFileURL?.stopAccessingSecurityScopedResource()
+        // 앱 샌드박스 외부 파일인 경우에만 Security-Scoped Resource 정리
+        if let url = selectedFileURL, !isFileInAppSandbox(url: url) {
+            url.stopAccessingSecurityScopedResource()
+        }
+        
         selectedFileURL = nil
         fileName = ""
         fileSize = ""
