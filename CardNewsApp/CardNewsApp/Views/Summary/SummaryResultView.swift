@@ -810,40 +810,48 @@ struct ModernCardView: View {
         }
     }
     
-    // MARK: - 🆕 계산된 속성들
+    // MARK: - 🔧 계산된 속성들 - 인스타그램 최적화
     
     private var cardSpacing: CGFloat {
-        displayMode == .export ? 16 : 20
+        displayMode == .export ? 20 : 20 // 🔧 export 모드 간격 증가
     }
     
     private var cornerRadius: CGFloat {
         displayMode == .export ? 12 : 16
     }
     
+    // 📱 Instagram 최적화: 제목 폰트 크기 증가
     private var titleFontSize: CGFloat {
-        displayMode == .export ? 22 : min(max(availableSize.width * 0.05, 16), 20)
+        displayMode == .export ? 30 : min(max(availableSize.width * 0.05, 16), 20) // 🔧 22 → 30
     }
     
+    // 📱 Instagram 최적화: 내용 폰트 크기 증가
     private var contentFontSize: CGFloat {
-        displayMode == .export ? 16 : min(max(availableSize.width * 0.04, 14), 16)
+        displayMode == .export ? 22 : min(max(availableSize.width * 0.04, 14), 16) // 🔧 16 → 22
     }
     
     private var horizontalPadding: CGFloat {
-        displayMode == .export ? 24 : min(max(availableSize.width * 0.06, 16), 24)
+        displayMode == .export ? 28 : min(max(availableSize.width * 0.06, 16), 24) // 🔧 패딩 증가
     }
     
     // MARK: - 🆕 카드 헤더 섹션
     private var cardHeaderSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: displayMode == .export ? 16 : 12) { // 🔧 export 모드 간격 증가
             // 카드 번호 배지
             ZStack {
                 Capsule()
                     .fill(AppGradients.primary)
-                    .frame(width: 70, height: 28)
+                    .frame(
+                        width: displayMode == .export ? 80 : 70, // 🔧 배지 크기 증가
+                        height: displayMode == .export ? 32 : 28
+                    )
                     .shadow(color: AppColors.primaryStart.opacity(0.3), radius: 3, x: 0, y: 2)
                 
                 Text("카드 \(card.cardNumber)")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(
+                        size: displayMode == .export ? 14 : 12, // 🔧 배지 폰트 크기 증가
+                        weight: .bold
+                    ))
                     .foregroundColor(.white)
             }
             
@@ -852,19 +860,19 @@ struct ModernCardView: View {
                 .font(.system(size: titleFontSize, weight: .bold, design: .rounded))
                 .foregroundColor(Color(hex: card.textColor ?? "#1A1A1A"))
                 .multilineTextAlignment(.center)
-                .lineSpacing(2)
+                .lineSpacing(displayMode == .export ? 4 : 2) // 🔧 줄 간격 증가
                 .padding(.horizontal, horizontalPadding)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.top, displayMode == .export ? 20 : 16)
+        .padding(.top, displayMode == .export ? 24 : 16) // 🔧 상단 패딩 증가
     }
     
     // MARK: - 🆕 카드 내용 섹션
     private var cardContentSection: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: displayMode == .export ? 20 : 16) { // 🔧 간격 증가
             Text(card.content)
                 .font(.system(size: contentFontSize, weight: .medium))
-                .lineSpacing(displayMode == .export ? 4 : 3)
+                .lineSpacing(displayMode == .export ? 6 : 3) // 🔧 줄 간격 크게 증가
                 .multilineTextAlignment(.center)
                 .foregroundColor(Color(hex: card.textColor ?? "#1A1A1A"))
                 .padding(.horizontal, horizontalPadding)
@@ -880,19 +888,22 @@ struct ModernCardView: View {
     
     // MARK: - 🆕 이미지 섹션
     private func imageSection(prompt: String) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: displayMode == .export ? 12 : 8) { // 🔧 간격 증가
             // 이미지 플레이스홀더
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color.gray.opacity(0.1))
-                .frame(height: displayMode == .export ? 100 : min(availableSize.height * 0.15, 80))
+                .frame(height: displayMode == .export ? 120 : min(availableSize.height * 0.15, 80)) // 🔧 높이 증가
                 .overlay(
-                    VStack(spacing: 4) {
+                    VStack(spacing: displayMode == .export ? 6 : 4) { // 🔧 간격 증가
                         Image(systemName: "photo")
-                            .font(displayMode == .export ? .title2 : .title3)
+                            .font(displayMode == .export ? .title : .title3) // 🔧 아이콘 크기 증가
                             .foregroundColor(AppColors.primaryStart)
                         
                         Text("이미지 생성 예정")
-                            .font(.system(size: displayMode == .export ? 12 : 10, weight: .medium))
+                            .font(.system(
+                                size: displayMode == .export ? 14 : 10, // 🔧 폰트 크기 증가
+                                weight: .medium
+                            ))
                             .foregroundColor(.secondary)
                     }
                 )
@@ -903,11 +914,14 @@ struct ModernCardView: View {
             
             // 이미지 프롬프트
             Text("💡 \(prompt)")
-                .font(.system(size: displayMode == .export ? 11 : 9, weight: .medium))
+                .font(.system(
+                    size: displayMode == .export ? 13 : 9, // 🔧 폰트 크기 증가
+                    weight: .medium
+                ))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, displayMode == .export ? 12 : 8) // 🔧 패딩 증가
+                .padding(.vertical, displayMode == .export ? 6 : 4) // 🔧 패딩 증가
                 .background(
                     Capsule()
                         .fill(Color.gray.opacity(0.1))
@@ -918,29 +932,43 @@ struct ModernCardView: View {
     
     // MARK: - 🆕 브랜딩 섹션
     private var brandingSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: displayMode == .export ? 16 : 12) { // 🔧 간격 증가
             // 앱 아이콘과 브랜드명
-            HStack(spacing: 12) {
+            HStack(spacing: displayMode == .export ? 16 : 12) { // 🔧 간격 증가
                 // 🆕 앱 아이콘 플레이스홀더
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(AppGradients.primary)
-                        .frame(width: 32, height: 32)
+                        .frame(
+                            width: displayMode == .export ? 36 : 32, // 🔧 아이콘 크기 증가
+                            height: displayMode == .export ? 36 : 32
+                        )
                         .shadow(color: AppColors.primaryStart.opacity(0.3), radius: 2, x: 0, y: 1)
                     
                     // Q 아이콘 (QuickCard의 Q)
                     Text("Q")
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .font(.system(
+                            size: displayMode == .export ? 20 : 18, // 🔧 폰트 크기 증가
+                            weight: .bold, 
+                            design: .rounded
+                        ))
                         .foregroundColor(.white)
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("QuickCard")
-                        .font(.system(size: displayMode == .export ? 18 : 16, weight: .bold, design: .rounded))
+                        .font(.system(
+                            size: displayMode == .export ? 20 : 16, // 🔧 폰트 크기 증가
+                            weight: .bold, 
+                            design: .rounded
+                        ))
                         .foregroundColor(.primary)
                     
                     Text("AI 카드뉴스 생성기")
-                        .font(.system(size: displayMode == .export ? 12 : 10, weight: .medium))
+                        .font(.system(
+                            size: displayMode == .export ? 14 : 10, // 🔧 폰트 크기 증가
+                            weight: .medium
+                        ))
                         .foregroundColor(.secondary)
                 }
                 
@@ -948,7 +976,7 @@ struct ModernCardView: View {
             }
             
             // 🆕 브랜딩 포인트
-            HStack(spacing: 4) {
+            HStack(spacing: displayMode == .export ? 6 : 4) { // 🔧 간격 증가
                 ForEach(0..<5, id: \.self) { index in
                     Circle()
                         .fill(
@@ -958,19 +986,25 @@ struct ModernCardView: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: 4, height: 4)
+                        .frame(
+                            width: displayMode == .export ? 5 : 4, // 🔧 점 크기 증가
+                            height: displayMode == .export ? 5 : 4
+                        )
                         .scaleEffect(index == 2 ? 1.2 : 1.0)
                 }
             }
             
             // 🆕 앱스토어 유도 텍스트
             Text("PDF→카드뉴스 변환 📱 App Store에서 다운로드")
-                .font(.system(size: displayMode == .export ? 11 : 9, weight: .medium))
+                .font(.system(
+                    size: displayMode == .export ? 13 : 9, // 🔧 폰트 크기 증가
+                    weight: .medium
+                ))
                 .foregroundColor(.secondary.opacity(0.8))
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal, horizontalPadding)
-        .padding(.vertical, displayMode == .export ? 20 : 16)
+        .padding(.vertical, displayMode == .export ? 24 : 16) // 🔧 패딩 증가
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color(.systemBackground).opacity(0.8))
@@ -987,7 +1021,7 @@ struct ModernCardView: View {
                 )
         )
         .padding(.horizontal, horizontalPadding)
-        .padding(.bottom, displayMode == .export ? 20 : 16)
+        .padding(.bottom, displayMode == .export ? 24 : 16) // 🔧 패딩 증가
     }
     
     // MARK: - 🆕 카드 배경
