@@ -10,6 +10,8 @@ struct SummaryResultView: View {
     @State private var saveError: String?
     @State private var showSaveError = false
     @State private var cardScale: CGFloat = 1.0
+    @State private var isSavingAll = false // 🆕 모든 카드 저장 중 상태
+    @State private var saveProgress = 0 // 🆕 저장 진행도
     
     let summaryResult: SummaryResult
     
@@ -50,6 +52,11 @@ struct SummaryResultView: View {
                         bottomControlsSection
                     }
                 }
+                
+                // 🆕 저장 진행 상태 오버레이
+                if isSavingAll {
+                    saveProgressOverlay
+                }
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
@@ -70,6 +77,7 @@ struct SummaryResultView: View {
                         }
                         .foregroundColor(AppColors.primaryStart)
                     }
+                    .disabled(isSavingAll) // 🆕 저장 중일 때 비활성화
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -82,10 +90,12 @@ struct SummaryResultView: View {
             .alert("저장 완료", isPresented: $showSaveConfirmation) {
                 Button("확인") { }
             } message: {
-                Text("카드뉴스가 갤러리에 저장되었습니다.")
+                Text(isSavingAll ? "모든 카드가 갤러리에 저장되었습니다." : "카드뉴스가 갤러리에 저장되었습니다.")
             }
             .alert("저장 실패", isPresented: $showSaveError) {
-                Button("확인") { }
+                Button("확인") { 
+                    isSavingAll = false // 🆕 오류 시 저장 상태 초기화
+                }
             } message: {
                 Text(saveError ?? "갤러리 저장 중 오류가 발생했습니다.")
             }
@@ -93,6 +103,52 @@ struct SummaryResultView: View {
                 print("🔍 [SummaryResultView] 화면 표시됨")
                 print("📊 [SummaryResultView] 현재 카드 인덱스: \(currentCardIndex)")
                 print("📋 [SummaryResultView] 총 카드 수: \(summaryResult.cards.count)")
+            }
+        }
+    }
+    
+    // MARK: - 🆕 Save Progress Overlay
+    private var saveProgressOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.5)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 20) {
+                // 진행 상태 표시
+                VStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 8)
+                            .frame(width: 80, height: 80)
+                        
+                        Circle()
+                            .trim(from: 0, to: CGFloat(saveProgress) / CGFloat(summaryResult.cards.count))
+                            .stroke(AppGradients.primary, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                            .frame(width: 80, height: 80)
+                            .rotationEffect(.degrees(-90))
+                            .animation(.easeInOut(duration: 0.5), value: saveProgress)
+                        
+                        Text("\(saveProgress)")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    
+                    VStack(spacing: 8) {
+                        Text("갤러리에 저장 중...")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                        
+                        Text("\(saveProgress) / \(summaryResult.cards.count) 카드")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+                .padding(32)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.ultraThinMaterial)
+                        .environment(\.colorScheme, .dark)
+                )
             }
         }
     }
@@ -111,20 +167,24 @@ struct SummaryResultView: View {
             Button(action: { showShareSheet = true }) {
                 Label("공유하기", systemImage: "square.and.arrow.up")
             }
+            .disabled(isSavingAll) // 🆕 저장 중일 때 비활성화
             
             Button(action: { saveCurrentCard() }) {
                 Label("현재 카드 저장", systemImage: "square.and.arrow.down")
             }
+            .disabled(isSavingAll) // 🆕 저장 중일 때 비활성화
             
             Button(action: { saveAllCards() }) {
                 Label("모든 카드 저장", systemImage: "rectangle.stack")
             }
+            .disabled(isSavingAll) // 🆕 저장 중일 때 비활성화
             
             Divider()
             
             Button(action: { exportAsPDF() }) {
                 Label("PDF로 내보내기", systemImage: "doc.fill")
             }
+            .disabled(isSavingAll) // 🆕 저장 중일 때 비활성화
         } label: {
             ZStack {
                 Circle()
@@ -134,8 +194,10 @@ struct SummaryResultView: View {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(AppColors.primaryStart)
+                    .opacity(isSavingAll ? 0.5 : 1.0) // 🆕 저장 중일 때 반투명
             }
         }
+        .disabled(isSavingAll) // 🆕 저장 중일 때 비활성화
     }
     
     // MARK: - Top Info Section
@@ -334,6 +396,7 @@ struct SummaryResultView: View {
                             )
                             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: currentCardIndex)
                     }
+                    .disabled(isSavingAll) // 🆕 저장 중일 때 비활성화
                 }
             }
             
@@ -357,7 +420,7 @@ struct SummaryResultView: View {
                             .foregroundColor(.white)
                     }
                 }
-                .disabled(currentCardIndex <= 0)
+                .disabled(currentCardIndex <= 0 || isSavingAll) // 🆕 저장 중일 때 비활성화
                 .scaleEffect(currentCardIndex > 0 ? 1.0 : 0.9)
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: currentCardIndex)
                 
@@ -406,7 +469,7 @@ struct SummaryResultView: View {
                             .foregroundColor(.white)
                     }
                 }
-                .disabled(currentCardIndex >= summaryResult.cards.count - 1)
+                .disabled(currentCardIndex >= summaryResult.cards.count - 1 || isSavingAll) // 🆕 저장 중일 때 비활성화
                 .scaleEffect(currentCardIndex < summaryResult.cards.count - 1 ? 1.0 : 0.9)
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: currentCardIndex)
             }
@@ -463,19 +526,124 @@ struct SummaryResultView: View {
         saveToGallery(cardIndex: currentCardIndex)
     }
     
+    // MARK: - 🔧 수정된 saveAllCards 함수
     private func saveAllCards() {
         print("🔍 [SummaryResultView] 모든 카드 저장 시작")
         
-        for index in 0..<summaryResult.cards.count {
-            saveToGallery(cardIndex: index)
+        // 이미 저장 중이면 무시
+        guard !isSavingAll else {
+            print("⚠️ [SummaryResultView] 이미 저장 중입니다.")
+            return
         }
         
-        // 모든 카드 저장 완료 알림
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            showSaveConfirmation = true
+        // 저장 상태 초기화
+        isSavingAll = true
+        saveProgress = 0
+        
+        // 먼저 사진 권한 확인
+        checkPhotoPermissionAndSaveAll()
+    }
+    
+    // MARK: - 🆕 권한 확인 후 순차 저장
+    private func checkPhotoPermissionAndSaveAll() {
+        let authStatus = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+        
+        switch authStatus {
+        case .authorized, .limited:
+            // 권한이 있으면 바로 순차 저장 시작
+            startSequentialSave()
+            
+        case .denied, .restricted:
+            // 권한이 거부되었으면 오류 표시
+            saveError = "사진 라이브러리 접근 권한이 필요합니다. 설정에서 권한을 허용해주세요."
+            showSaveError = true
+            isSavingAll = false
+            
+        case .notDetermined:
+            // 권한이 결정되지 않았으면 요청
+            PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+                DispatchQueue.main.async {
+                    if status == .authorized || status == .limited {
+                        self.startSequentialSave()
+                    } else {
+                        self.saveError = "사진 라이브러리 접근 권한이 거부되었습니다."
+                        self.showSaveError = true
+                        self.isSavingAll = false
+                    }
+                }
+            }
+            
+        @unknown default:
+            saveError = "알 수 없는 권한 상태입니다."
+            showSaveError = true
+            isSavingAll = false
         }
     }
     
+    // MARK: - 🆕 순차적 카드 저장
+    private func startSequentialSave() {
+        print("🔍 [SummaryResultView] 순차 저장 시작")
+        
+        // 첫 번째 카드부터 순차적으로 저장
+        saveCardAtIndex(0)
+    }
+    
+    private func saveCardAtIndex(_ index: Int) {
+        // 모든 카드를 저장했으면 완료
+        guard index < summaryResult.cards.count else {
+            // 저장 완료
+            DispatchQueue.main.async {
+                self.isSavingAll = false
+                self.saveProgress = 0
+                self.showSaveConfirmation = true
+                print("✅ [SummaryResultView] 모든 카드 저장 완료")
+            }
+            return
+        }
+        
+        let card = summaryResult.cards[index]
+        print("🔍 [SummaryResultView] 카드 \(index + 1) 저장 중...")
+        
+        // ModernCardView를 이미지로 렌더링
+        let cardView = ModernCardView(card: card, config: summaryResult.config, isCurrentCard: true)
+            .frame(width: 375, height: 650) // 카드 크기 고정 (9:16 비율)
+        
+        let renderer = ImageRenderer(content: cardView)
+        renderer.scale = 3.0 // 고해상도
+        
+        guard let uiImage = renderer.uiImage else {
+            // 이미지 생성 실패 시 다음 카드로 진행
+            print("❌ [SummaryResultView] 카드 \(index + 1) 이미지 생성 실패")
+            DispatchQueue.main.async {
+                self.saveProgress += 1
+                self.saveCardAtIndex(index + 1)
+            }
+            return
+        }
+        
+        // 사진 라이브러리에 저장
+        PHPhotoLibrary.shared().performChanges({
+            PHAssetChangeRequest.creationRequestForAsset(from: uiImage)
+        }) { success, error in
+            DispatchQueue.main.async {
+                if success {
+                    print("✅ [SummaryResultView] 카드 \(index + 1) 저장 성공")
+                } else {
+                    print("❌ [SummaryResultView] 카드 \(index + 1) 저장 실패: \(error?.localizedDescription ?? "알 수 없는 오류")")
+                }
+                
+                // 진행도 업데이트 후 다음 카드 저장
+                self.saveProgress += 1
+                
+                // 잠시 대기 후 다음 카드 저장 (시스템 부하 방지)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.saveCardAtIndex(index + 1)
+                }
+            }
+        }
+    }
+    
+    // MARK: - 🔧 기존 saveToGallery 함수 (단일 카드용)
     private func saveToGallery(cardIndex: Int? = nil) {
         let targetIndex = cardIndex ?? currentCardIndex
         
@@ -537,9 +705,7 @@ struct SummaryResultView: View {
             DispatchQueue.main.async {
                 if success {
                     print("✅ [SummaryResultView] 카드 \(cardIndex + 1) 갤러리 저장 성공")
-                    if cardIndex == currentCardIndex {
-                        showSaveConfirmation = true
-                    }
+                    showSaveConfirmation = true
                 } else {
                     print("❌ [SummaryResultView] 갤러리 저장 실패: \(error?.localizedDescription ?? "알 수 없는 오류")")
                     saveError = error?.localizedDescription ?? "이미지 저장에 실패했습니다."
