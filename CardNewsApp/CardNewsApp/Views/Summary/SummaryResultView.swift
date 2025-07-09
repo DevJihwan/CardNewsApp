@@ -39,18 +39,18 @@ struct SummaryResultView: View {
                         .ignoresSafeArea()
                     
                     VStack(spacing: 0) {
-                        // 상단 정보 바 - Premium Design
-                        topInfoSection
+                        // 🔧 상단 정보 바 - 컴팩트하게 수정
+                        compactTopInfoSection
                         
                         // 카드뷰가 비어있는지 확인
                         if summaryResult.cards.isEmpty {
                             emptyStateView
                         } else {
-                            // 메인 카드 뷰어 - 🆕 GeometryReader로 화면 크기 전달
-                            cardViewerSection(screenSize: geometry.size)
+                            // 🔧 메인 카드 뷰어 - 더 큰 영역 할당
+                            expandedCardViewerSection(screenSize: geometry.size)
                             
-                            // 하단 컨트롤 - Modern Navigation
-                            bottomControlsSection
+                            // 🔧 하단 컨트롤 - 컴팩트하게 수정
+                            compactBottomControlsSection
                         }
                     }
                     
@@ -71,7 +71,7 @@ struct SummaryResultView: View {
                         NotificationCenter.default.post(name: .dismissAllModals, object: nil)
                         dismiss()
                     }) {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 16, weight: .semibold))
                             Text("완료")
@@ -191,10 +191,10 @@ struct SummaryResultView: View {
             ZStack {
                 Circle()
                     .fill(AppColors.primaryStart.opacity(0.1))
-                    .frame(width: 36, height: 36)
+                    .frame(width: 32, height: 32)
                 
                 Image(systemName: "ellipsis")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(AppColors.primaryStart)
                     .opacity(isSavingAll ? 0.5 : 1.0) // 🆕 저장 중일 때 반투명
             }
@@ -202,107 +202,90 @@ struct SummaryResultView: View {
         .disabled(isSavingAll) // 🆕 저장 중일 때 비활성화
     }
     
-    // MARK: - Top Info Section
-    private var topInfoSection: some View {
-        VStack(spacing: 16) {
-            // 문서 정보 헤더
-            HStack(spacing: 16) {
-                // 문서 아이콘
+    // MARK: - 🔧 Compact Top Info Section
+    private var compactTopInfoSection: some View {
+        VStack(spacing: 8) {
+            // 문서 정보 헤더 - 한 줄로 압축
+            HStack(spacing: 12) {
+                // 문서 아이콘 - 작게 조정
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: 8)
                         .fill(AppGradients.primary)
-                        .frame(width: 48, height: 48)
-                        .shadow(color: AppColors.primaryStart.opacity(0.3), radius: 4, x: 0, y: 2)
+                        .frame(width: 32, height: 32)
+                        .shadow(color: AppColors.primaryStart.opacity(0.3), radius: 2, x: 0, y: 1)
                     
                     Image(systemName: "doc.text.fill")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.white)
                 }
                 
-                // 문서 정보
-                VStack(alignment: .leading, spacing: 6) {
+                // 문서 정보 - 압축된 레이아웃
+                VStack(alignment: .leading, spacing: 2) {
                     Text(summaryResult.originalDocument.fileName)
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
+                        .lineLimit(1)
                     
-                    HStack(spacing: 16) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "rectangle.3.group.fill")
-                                .font(.system(size: 12, weight: .medium))
-                            Text(summaryResult.config.cardCount.displayName)
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        .foregroundColor(AppColors.primaryStart)
+                    HStack(spacing: 8) {
+                        Text(summaryResult.config.cardCount.displayName)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(AppColors.primaryStart)
                         
-                        HStack(spacing: 6) {
-                            Image(systemName: "paintbrush.fill")
-                                .font(.system(size: 12, weight: .medium))
-                            Text(summaryResult.config.outputStyle.displayName)
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        .foregroundColor(AppColors.accent)
+                        Text("•")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
                         
-                        HStack(spacing: 6) {
-                            Image(systemName: "globe")
-                                .font(.system(size: 12, weight: .medium))
-                            Text(summaryResult.config.language.displayName)
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        .foregroundColor(AppColors.success)
+                        Text(summaryResult.config.outputStyle.displayName)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(AppColors.accent)
                     }
                 }
                 
                 Spacer()
                 
-                // 카드 진행도
-                VStack(alignment: .trailing, spacing: 6) {
+                // 카드 진행도 - 작게 조정
+                VStack(alignment: .trailing, spacing: 2) {
                     if !summaryResult.cards.isEmpty {
                         Text("\(currentCardIndex + 1)/\(summaryResult.cards.count)")
-                            .font(.system(size: 20, weight: .bold))
+                            .font(.system(size: 16, weight: .bold))
                             .foregroundColor(.primary)
-                    } else {
-                        Text("0/0")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(AppColors.error)
                     }
                     
-                    Text(formatDate(summaryResult.createdAt))
-                        .font(.system(size: 13))
+                    Text(formatTimeAgo(summaryResult.createdAt))
+                        .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }
             }
             
-            // 진행도 바
+            // 진행도 바 - 얇게 조정
             if !summaryResult.cards.isEmpty {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 3)
+                        RoundedRectangle(cornerRadius: 2)
                             .fill(Color.gray.opacity(0.2))
-                            .frame(height: 6)
+                            .frame(height: 4)
                         
-                        RoundedRectangle(cornerRadius: 3)
+                        RoundedRectangle(cornerRadius: 2)
                             .fill(AppGradients.primary)
                             .frame(
                                 width: geometry.size.width * CGFloat(currentCardIndex + 1) / CGFloat(summaryResult.cards.count),
-                                height: 6
+                                height: 4
                             )
                             .animation(.easeInOut(duration: 0.3), value: currentCardIndex)
                     }
                 }
-                .frame(height: 6)
+                .frame(height: 4)
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 20)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
-        )
         .padding(.horizontal, 16)
-        .padding(.top, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 1)
+        )
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
     }
     
     // MARK: - Empty State View
@@ -340,8 +323,8 @@ struct SummaryResultView: View {
         .padding(.horizontal, 40)
     }
     
-    // MARK: - 🔧 수정된 Card Viewer Section - 화면 크기 고려
-    private func cardViewerSection(screenSize: CGSize) -> some View {
+    // MARK: - 🔧 Expanded Card Viewer Section - 더 큰 영역 할당
+    private func expandedCardViewerSection(screenSize: CGSize) -> some View {
         TabView(selection: $currentCardIndex) {
             ForEach(Array(summaryResult.cards.enumerated()), id: \.offset) { index, card in
                 ModernCardView(
@@ -350,8 +333,8 @@ struct SummaryResultView: View {
                     isCurrentCard: currentCardIndex == index,
                     displayMode: .screen, // 🆕 화면 표시 모드
                     availableSize: CGSize(
-                        width: screenSize.width - 32, // 좌우 여백 고려
-                        height: screenSize.height * 0.55 // 상하단 컨트롤 영역 제외
+                        width: screenSize.width - 24, // 최소 여백으로 더 넓게
+                        height: screenSize.height * 0.75 // 75%의 높이 할당으로 더 크게
                     )
                 )
                 .tag(index)
@@ -369,7 +352,7 @@ struct SummaryResultView: View {
         }
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 12) // 여백 최소화
         .onChange(of: currentCardIndex) { oldValue, newValue in
             print("🔍 [SummaryResultView] 카드 변경: \(oldValue + 1) → \(newValue + 1)")
             
@@ -380,26 +363,26 @@ struct SummaryResultView: View {
         }
     }
     
-    // MARK: - Bottom Controls Section
-    private var bottomControlsSection: some View {
-        VStack(spacing: 20) {
-            // 페이지 인디케이터 - Modern Dots
-            HStack(spacing: 8) {
+    // MARK: - 🔧 Compact Bottom Controls Section
+    private var compactBottomControlsSection: some View {
+        VStack(spacing: 12) {
+            // 페이지 인디케이터 - 작게 조정
+            HStack(spacing: 6) {
                 ForEach(0..<summaryResult.cards.count, id: \.self) { index in
                     Button(action: {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                             currentCardIndex = index
                         }
                     }) {
-                        RoundedRectangle(cornerRadius: 4)
+                        RoundedRectangle(cornerRadius: 3)
                             .fill(
                                 currentCardIndex == index ?
                                 AppGradients.primary :
                                 LinearGradient(colors: [Color.gray.opacity(0.3)], startPoint: .leading, endPoint: .trailing)
                             )
                             .frame(
-                                width: currentCardIndex == index ? 24 : 8,
-                                height: 8
+                                width: currentCardIndex == index ? 20 : 6,
+                                height: 6
                             )
                             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: currentCardIndex)
                     }
@@ -407,89 +390,78 @@ struct SummaryResultView: View {
                 }
             }
             
-            // 네비게이션 컨트롤 - Modern Design
-            HStack(spacing: 24) {
-                // Previous Button
+            // 네비게이션 컨트롤 - 컴팩트하게 조정
+            HStack(spacing: 20) {
+                // Previous Button - 작게 조정
                 Button(action: { previousCard() }) {
                     ZStack {
                         Circle()
                             .fill(currentCardIndex > 0 ? AppGradients.primary : AppGradients.disabled)
-                            .frame(width: 56, height: 56)
+                            .frame(width: 44, height: 44)
                             .shadow(
-                                color: currentCardIndex > 0 ? AppColors.primaryStart.opacity(0.3) : .clear,
-                                radius: currentCardIndex > 0 ? 8 : 0,
+                                color: currentCardIndex > 0 ? AppColors.primaryStart.opacity(0.2) : .clear,
+                                radius: currentCardIndex > 0 ? 4 : 0,
                                 x: 0,
-                                y: currentCardIndex > 0 ? 4 : 0
+                                y: currentCardIndex > 0 ? 2 : 0
                             )
                         
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.white)
                     }
                 }
-                .disabled(currentCardIndex <= 0 || isSavingAll) // 🆕 저장 중일 때 비활성화
+                .disabled(currentCardIndex <= 0 || isSavingAll)
                 .scaleEffect(currentCardIndex > 0 ? 1.0 : 0.9)
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: currentCardIndex)
                 
-                // Current Card Info
+                // Current Card Info - 압축된 정보
                 if currentCardIndex < summaryResult.cards.count {
-                    VStack(spacing: 8) {
+                    VStack(spacing: 4) {
                         Text("카드 \(currentCardIndex + 1)")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
                         
                         Text(summaryResult.cards[currentCardIndex].title)
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.primary)
                             .multilineTextAlignment(.center)
-                            .lineLimit(2)
-                    }
-                    .frame(maxWidth: .infinity)
-                } else {
-                    VStack {
-                        Text("오류")
-                            .font(.caption)
-                            .foregroundColor(AppColors.error)
-                        
-                        Text("카드 인덱스 오류")
-                            .font(.subheadline)
-                            .foregroundColor(AppColors.error)
+                            .lineLimit(1)
                     }
                     .frame(maxWidth: .infinity)
                 }
                 
-                // Next Button
+                // Next Button - 작게 조정
                 Button(action: { nextCard() }) {
                     ZStack {
                         Circle()
                             .fill(currentCardIndex < summaryResult.cards.count - 1 ? AppGradients.primary : AppGradients.disabled)
-                            .frame(width: 56, height: 56)
+                            .frame(width: 44, height: 44)
                             .shadow(
-                                color: currentCardIndex < summaryResult.cards.count - 1 ? AppColors.primaryStart.opacity(0.3) : .clear,
-                                radius: currentCardIndex < summaryResult.cards.count - 1 ? 8 : 0,
+                                color: currentCardIndex < summaryResult.cards.count - 1 ? AppColors.primaryStart.opacity(0.2) : .clear,
+                                radius: currentCardIndex < summaryResult.cards.count - 1 ? 4 : 0,
                                 x: 0,
-                                y: currentCardIndex < summaryResult.cards.count - 1 ? 4 : 0
+                                y: currentCardIndex < summaryResult.cards.count - 1 ? 2 : 0
                             )
                         
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.white)
                     }
                 }
-                .disabled(currentCardIndex >= summaryResult.cards.count - 1 || isSavingAll) // 🆕 저장 중일 때 비활성화
+                .disabled(currentCardIndex >= summaryResult.cards.count - 1 || isSavingAll)
                 .scaleEffect(currentCardIndex < summaryResult.cards.count - 1 ? 1.0 : 0.9)
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: currentCardIndex)
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 20)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: -2)
-        )
         .padding(.horizontal, 16)
-        .padding(.bottom, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: -1)
+        )
+        .padding(.horizontal, 12)
+        .padding(.bottom, 8)
     }
     
     // MARK: - Helper Methods
@@ -505,6 +477,24 @@ struct SummaryResultView: View {
         guard currentCardIndex < summaryResult.cards.count - 1 else { return }
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
             currentCardIndex += 1
+        }
+    }
+    
+    // 🔧 간단한 시간 포맷 함수
+    private func formatTimeAgo(_ date: Date) -> String {
+        let timeInterval = Date().timeIntervalSince(date)
+        
+        if timeInterval < 60 {
+            return "방금 전"
+        } else if timeInterval < 3600 {
+            let minutes = Int(timeInterval / 60)
+            return "\(minutes)분 전"
+        } else if timeInterval < 86400 {
+            let hours = Int(timeInterval / 3600)
+            return "\(hours)시간 전"
+        } else {
+            let days = Int(timeInterval / 86400)
+            return "\(days)일 전"
         }
     }
     
