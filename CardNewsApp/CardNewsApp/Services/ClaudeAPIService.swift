@@ -516,4 +516,189 @@ class ClaudeAPIService: ObservableObject {
     
     // MARK: - Card Count Validation
     
-    private func validateAndFixCardCount(cards: [SummaryResult.Car
+    private func validateAndFixCardCount(cards: [SummaryResult.CardContent], expectedCount: Int) -> [SummaryResult.CardContent] {
+        print("🔍 [ClaudeAPIService] 카드 수 검증: \(cards.count)개 (목표: \(expectedCount)개)")
+        
+        if cards.count == expectedCount {
+            print("✅ [ClaudeAPIService] 카드 수 정확함")
+            return cards
+        }
+        
+        // 카드가 부족한 경우
+        if cards.count < expectedCount {
+            print("⚠️ [ClaudeAPIService] 카드 부족 - 추가 생성")
+            var fixedCards = cards
+            
+            for i in cards.count..<expectedCount {
+                let additionalCard = SummaryResult.CardContent(
+                    cardNumber: i + 1,
+                    title: "추가 요약 \(i + 1)",
+                    content: "이 카드는 자동으로 생성된 추가 요약입니다.",
+                    imagePrompt: nil,
+                    backgroundColor: "#FFFFFF",
+                    textColor: "#000000"
+                )
+                fixedCards.append(additionalCard)
+            }
+            
+            return fixedCards
+        }
+        
+        // 카드가 초과된 경우
+        if cards.count > expectedCount {
+            print("⚠️ [ClaudeAPIService] 카드 초과 - 잘라내기")
+            return Array(cards.prefix(expectedCount))
+        }
+        
+        return cards
+    }
+    
+    // MARK: - Summary Storage
+    
+    private func saveSummaryResult(_ result: SummaryResult) {
+        // UserDefaults를 사용한 간단한 저장 (추후 CoreData로 업그레이드)
+        var summaries = loadSavedSummaries()
+        summaries.insert(result, at: 0) // 최신 항목을 앞에 추가
+        
+        // 최대 10개까지만 저장
+        if summaries.count > 10 {
+            summaries = Array(summaries.prefix(10))
+        }
+        
+        do {
+            let data = try JSONEncoder().encode(summaries.map { EncodableSummaryResult(from: $0) })
+            UserDefaults.standard.set(data, forKey: "saved_summaries")
+            print("✅ [ClaudeAPIService] 요약 결과 저장 완료")
+        } catch {
+            print("❌ [ClaudeAPIService] 요약 결과 저장 실패: \(error)")
+        }
+    }
+    
+    // 저장된 요약 로드
+    func loadSavedSummaries() -> [SummaryResult] {
+        guard let data = UserDefaults.standard.data(forKey: "saved_summaries") else {
+            return []
+        }
+        
+        do {
+            let encodableSummaries = try JSONDecoder().decode([EncodableSummaryResult].self, from: data)
+            return encodableSummaries.map { $0.toSummaryResult() }
+        } catch {
+            print("❌ [ClaudeAPIService] 저장된 요약 로드 실패: \(error)")
+            return []
+        }
+    }
+    
+    // MARK: - Error Mapping
+    
+    private func mapAPIError(_ error: ClaudeError, statusCode: Int) -> ClaudeAPIError {
+        switch statusCode {
+        case 401:
+            return .invalidAPIKey
+        case 400:
+            return .invalidRequest
+        case 429:
+            return .rateLimitExceeded
+        case 402:
+            return .insufficientCredits
+        default:
+            return .serverError(statusCode)
+        }
+    }
+    
+    // MARK: - Utility Methods
+    
+    func validateConfiguration() -> Bool {
+        return isConfigured && !apiKey.isEmpty
+    }
+    
+    func estimateTokens(for text: String) -> Int {
+        // 대략적인 토큰 계산 (1토큰 ≈ 4글자)
+        return text.count / 4
+    }
+}
+
+// MARK: - Encodable Helper for Storage
+
+private struct EncodableSummaryResult: Codable {
+    let id: String
+    let cardCount: Int
+    let outputStyle: String
+    let language: String
+    let tone: String
+    let fileName: String
+    let fileSize: Int
+    let fileType: String
+    let uploadedAt: Date
+    let cards: [EncodableCardContent]
+    let createdAt: Date
+    let tokensUsed: Int
+    
+    init(from result: SummaryResult) {
+        self.id = result.id
+        self.cardCount = result.config.cardCount.rawValue
+        self.outputStyle = result.config.outputStyle.rawValue
+        self.language = result.config.language.rawValue
+        self.tone = result.config.tone.rawValue
+        self.fileName = result.originalDocument.fileName
+        self.fileSize = result.originalDocument.fileSize
+        self.fileType = result.originalDocument.fileType
+        self.uploadedAt = result.originalDocument.uploadedAt
+        self.cards = result.cards.map { EncodableCardContent(from: $0) }
+        self.createdAt = result.createdAt
+        self.tokensUsed = result.tokensUsed
+    }
+    
+    func toSummaryResult() -> SummaryResult {
+        let documentInfo = DocumentInfo(
+            fileName: fileName,
+            fileSize: fileSize,
+            fileType: fileType
+        )
+        
+        let config = SummaryConfig(
+            cardCount: SummaryConfig.CardCount(rawValue: cardCount) ?? .four,
+            outputStyle: SummaryConfig.OutputStyle(rawValue: outputStyle) ?? .text,
+            language: SummaryConfig.SummaryLanguage(rawValue: language) ?? .korean,
+            tone: SummaryConfig.SummaryTone(rawValue: tone) ?? .friendly
+        )
+        
+        return SummaryResult(
+            id: id,
+            config: config,
+            originalDocument: documentInfo,
+            cards: cards.map { $0.toCardContent() },
+            createdAt: createdAt,
+            tokensUsed: tokensUsed
+        )
+    }
+}
+
+private struct EncodableCardContent: Codable {
+    let cardNumber: Int
+    let title: String
+    let content: String
+    let imagePrompt: String?
+    let backgroundColor: String?
+    let textColor: String?
+    
+    init(from card: SummaryResult.CardContent) {
+        self.cardNumber = card.cardNumber
+        self.title = card.title
+        self.content = card.content
+        self.imagePrompt = card.imagePrompt
+        self.backgroundColor = card.backgroundColor
+        self.textColor = card.textColor
+    }
+    
+    func toCardContent() -> SummaryResult.CardContent {
+        return SummaryResult.CardContent(
+            cardNumber: cardNumber,
+            title: title,
+            content: content,
+            imagePrompt: imagePrompt,
+            backgroundColor: backgroundColor,
+            textColor: textColor
+        )
+    }
+}
