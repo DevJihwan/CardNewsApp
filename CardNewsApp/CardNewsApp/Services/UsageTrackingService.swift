@@ -116,13 +116,12 @@ class UsageTrackingService: ObservableObject {
             
             remainingFreeUsage = max(0, freeUsageLimit - newUsage)
             print("🆓 [UsageTrackingService] 무료 사용량: \(newUsage)/\(freeUsageLimit), 남은 횟수: \(remainingFreeUsage)")
+        } else {
+            // 구독자의 경우만 월간 사용량 기록
+            monthlyUsage.textCount += 1
+            saveMonthlyUsage()
+            print("📈 [UsageTrackingService] 월간 텍스트 사용량: \(monthlyUsage.textCount)")
         }
-        
-        // 월간 사용량 기록 (모든 사용자)
-        monthlyUsage.textCount += 1
-        saveMonthlyUsage()
-        
-        print("📈 [UsageTrackingService] 월간 텍스트 사용량: \(monthlyUsage.textCount)")
         
         // UI 업데이트 알림
         DispatchQueue.main.async {
@@ -166,11 +165,19 @@ class UsageTrackingService: ObservableObject {
     func updateSubscription(isActive: Bool, tier: SubscriptionTier) {
         print("💎 [UsageTrackingService] 구독 상태 업데이트: \(isActive ? "활성" : "비활성"), 티어: \(tier)")
         
+        let wasInactive = !isSubscriptionActive
+        
         isSubscriptionActive = isActive
         currentSubscriptionTier = tier
         
         userDefaults.set(isActive, forKey: Keys.subscriptionStatus)
         userDefaults.set(tier.rawValue, forKey: Keys.subscriptionTier)
+        
+        // 구독이 새로 활성화된 경우 월간 사용량 리셋
+        if isActive && wasInactive {
+            print("🔄 [UsageTrackingService] 구독 활성화로 인한 월간 사용량 리셋")
+            resetMonthlyUsage()
+        }
         
         objectWillChange.send()
     }
@@ -196,6 +203,15 @@ class UsageTrackingService: ObservableObject {
         userDefaults.removeObject(forKey: Keys.freeUsageCount)
         userDefaults.removeObject(forKey: Keys.firstUseDate)
         remainingFreeUsage = freeUsageLimit
+        objectWillChange.send()
+    }
+    
+    /// 월간 사용량 리셋
+    private func resetMonthlyUsage() {
+        print("🔄 [UsageTrackingService] 월간 사용량 리셋")
+        monthlyUsage = UsageStats()
+        saveMonthlyUsage()
+        userDefaults.set(Date(), forKey: Keys.lastResetDate)
         objectWillChange.send()
     }
     
