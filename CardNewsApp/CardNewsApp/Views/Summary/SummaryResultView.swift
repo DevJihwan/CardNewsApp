@@ -604,12 +604,12 @@ struct SummaryResultView: View {
         let card = summaryResult.cards[index]
         print("🔍 [SummaryResultView] 카드 \(index + 1) 저장 중...")
         
-        // ModernCardView를 이미지로 렌더링
+        // 📱 인스타그램 최적화: 1080x1080 정사방형으로 변경
         let cardView = ModernCardView(card: card, config: summaryResult.config, isCurrentCard: true)
-            .frame(width: 375, height: 650) // 카드 크기 고정 (9:16 비율)
+            .frame(width: 1080, height: 1080) // 🆕 인스타그램 정사방형 사이즈
         
         let renderer = ImageRenderer(content: cardView)
-        renderer.scale = 3.0 // 고해상도
+        renderer.scale = 2.0 // 🆕 고해상도 최적화 (2160x2160 실제 출력)
         
         guard let uiImage = renderer.uiImage else {
             // 이미지 생성 실패 시 다음 카드로 진행
@@ -685,12 +685,12 @@ struct SummaryResultView: View {
         
         let card = summaryResult.cards[cardIndex]
         
-        // ModernCardView를 이미지로 렌더링
+        // 📱 인스타그램 최적화: 1080x1080 정사방형으로 변경
         let cardView = ModernCardView(card: card, config: summaryResult.config, isCurrentCard: true)
-            .frame(width: 375, height: 650) // 카드 크기 고정 (9:16 비율)
+            .frame(width: 1080, height: 1080) // 🆕 인스타그램 정사방형 사이즈
         
         let renderer = ImageRenderer(content: cardView)
-        renderer.scale = 3.0 // 고해상도
+        renderer.scale = 2.0 // 🆕 고해상도 최적화 (2160x2160 실제 출력)
         
         guard let uiImage = renderer.uiImage else {
             saveError = "이미지 생성에 실패했습니다."
@@ -737,7 +737,7 @@ struct SummaryResultView: View {
     }
 }
 
-// MARK: - 🆕 개선된 Modern Card View
+// MARK: - 📱 인스타그램 최적화 Modern Card View
 
 struct ModernCardView: View {
     let card: SummaryResult.CardContent
@@ -756,112 +756,174 @@ struct ModernCardView: View {
     }
     
     var body: some View {
-        VStack(spacing: 24) {
-            // 🆕 카드 헤더 - 간소화된 디자인
-            VStack(spacing: 16) {
+        VStack(spacing: 20) {
+            // 🆕 카드 헤더 - 정사방형에 최적화
+            VStack(spacing: 12) {
                 // 카드 번호 배지
                 ZStack {
                     Capsule()
                         .fill(AppGradients.primary)
-                        .frame(width: 80, height: 32)
-                        .shadow(color: AppColors.primaryStart.opacity(0.3), radius: 4, x: 0, y: 2)
+                        .frame(width: 70, height: 28)
+                        .shadow(color: AppColors.primaryStart.opacity(0.3), radius: 3, x: 0, y: 2)
                     
                     Text("카드 \(card.cardNumber)")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundColor(.white)
                 }
                 
                 // 카드 제목
                 Text(card.title)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(Color(hex: card.textColor ?? "#1A1A1A"))
                     .multilineTextAlignment(.center)
                     .lineSpacing(2)
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, 20)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.top, 20)
+            .padding(.top, 16)
             
-            // 🆕 카드 내용 - 레이아웃 개선
-            VStack(spacing: 20) {
+            // 🆕 카드 내용 - 정사방형 레이아웃 최적화
+            VStack(spacing: 16) {
                 Text(card.content)
-                    .font(.system(size: 16, weight: .medium))
-                    .lineSpacing(4)
+                    .font(.system(size: 14, weight: .medium))
+                    .lineSpacing(3)
                     .multilineTextAlignment(.center)
                     .foregroundColor(Color(hex: card.textColor ?? "#1A1A1A"))
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, 20)
                     .fixedSize(horizontal: false, vertical: true)
                 
-                // 🆕 이미지 플레이스홀더 - 조건부 표시
+                // 🆕 이미지 플레이스홀더 - 정사방형에 맞게 조정
                 if config.outputStyle == .image,
                    let imagePrompt = card.imagePrompt, !imagePrompt.isEmpty {
-                    VStack(spacing: 12) {
-                        // 이미지 플레이스홀더
-                        RoundedRectangle(cornerRadius: 12)
+                    VStack(spacing: 8) {
+                        // 이미지 플레이스홀더 - 더 작게 조정
+                        RoundedRectangle(cornerRadius: 10)
                             .fill(Color.gray.opacity(0.1))
-                            .frame(height: 120)
+                            .frame(height: 80)
                             .overlay(
-                                VStack(spacing: 8) {
+                                VStack(spacing: 4) {
                                     Image(systemName: "photo")
-                                        .font(.title2)
+                                        .font(.title3)
                                         .foregroundColor(AppColors.primaryStart)
                                     
                                     Text("이미지 생성 예정")
-                                        .font(.system(size: 12, weight: .medium))
+                                        .font(.system(size: 10, weight: .medium))
                                         .foregroundColor(.secondary)
                                 }
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12)
+                                RoundedRectangle(cornerRadius: 10)
                                     .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                             )
                         
-                        // 이미지 프롬프트
+                        // 이미지 프롬프트 - 더 작게 조정
                         Text("💡 \(imagePrompt)")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 9, weight: .medium))
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
                             .background(
                                 Capsule()
                                     .fill(Color.gray.opacity(0.1))
                             )
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, 20)
                 }
             }
             
             Spacer()
             
-            // 🆕 하단 브랜딩 - 단순화
-            VStack(spacing: 4) {
-                HStack(spacing: 3) {
-                    Circle()
-                        .fill(AppColors.primaryStart)
-                        .frame(width: 3, height: 3)
-                    Circle()
-                        .fill(AppColors.primaryEnd)
-                        .frame(width: 3, height: 3)
-                    Circle()
-                        .fill(AppColors.accent)
-                        .frame(width: 3, height: 3)
+            // 🆕 강화된 브랜딩 영역 - 인스타그램용
+            VStack(spacing: 12) {
+                // 앱 아이콘과 브랜드명
+                HStack(spacing: 12) {
+                    // 🆕 앱 아이콘 플레이스홀더
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(AppGradients.primary)
+                            .frame(width: 32, height: 32)
+                            .shadow(color: AppColors.primaryStart.opacity(0.3), radius: 2, x: 0, y: 1)
+                        
+                        // Q 아이콘 (QuickCard의 Q)
+                        Text("Q")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("QuickCard")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+                        
+                        Text("AI 카드뉴스 생성기")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
                 }
                 
-                Text("QuickCard")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.secondary.opacity(0.7))
+                // 🆕 브랜딩 포인트
+                HStack(spacing: 4) {
+                    ForEach(0..<5, id: \.self) { index in
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [AppColors.primaryStart, AppColors.primaryEnd, AppColors.accent],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: 4, height: 4)
+                            .scaleEffect(index == 2 ? 1.2 : 1.0)
+                    }
+                }
+                
+                // 🆕 앱스토어 유도 텍스트
+                Text("PDF→카드뉴스 변환 📱 App Store에서 다운로드")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(.secondary.opacity(0.8))
+                    .multilineTextAlignment(.center)
             }
-            .padding(.bottom, 20)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemBackground).opacity(0.8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [AppColors.primaryStart.opacity(0.3), AppColors.primaryEnd.opacity(0.1)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                    )
+            )
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(hex: card.backgroundColor ?? "#FFFFFF"))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .background(
+            // 🆕 더 세련된 배경
+            LinearGradient(
+                colors: [
+                    Color(hex: card.backgroundColor ?? "#FFFFFF"),
+                    Color(hex: card.backgroundColor ?? "#FFFFFF").opacity(0.95)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16)) // 🆕 더 작은 코너 반경
         .shadow(
             color: isCurrentCard ? .black.opacity(0.12) : .black.opacity(0.04),
-            radius: isCurrentCard ? 16 : 6,
+            radius: isCurrentCard ? 12 : 4,
             x: 0,
-            y: isCurrentCard ? 8 : 3
+            y: isCurrentCard ? 6 : 2
         )
         .scaleEffect(isCurrentCard ? 1.0 : 0.96)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isCurrentCard)
