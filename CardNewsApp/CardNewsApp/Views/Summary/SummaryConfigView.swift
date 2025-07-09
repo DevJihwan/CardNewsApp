@@ -29,16 +29,16 @@ struct SummaryConfigView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // 🎨 Modern Background with Gradient
-                backgroundGradient
+                // 🎨 Modern Background with System Grouping
+                Color(.systemGroupedBackground)
                     .ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 32) {
-                        // 📊 Usage Status - Premium Glass Card
+                        // 📊 Usage Status - System-aligned Design
                         usageStatusSection
                         
-                        // 📄 Document Info - Clean & Professional
+                        // 📄 Document Info - Clean & System-styled
                         documentInfoSection
                         
                         // ⚙️ Configuration Sections - Modern Cards
@@ -51,7 +51,7 @@ struct SummaryConfigView: View {
                         Color.clear.frame(height: 40)
                     }
                     .padding(.horizontal, 24)
-                    .padding(.top, 20)
+                    .padding(.vertical, 20)
                 }
             }
             .navigationTitle("요약 설정")
@@ -61,7 +61,7 @@ struct SummaryConfigView: View {
                     Button("취소") {
                         dismiss()
                     }
-                    .foregroundColor(AppColors.primaryStart)
+                    .foregroundColor(.primary) // 동적 색상 적용
                 }
                 
                 if usageService.isSubscriptionActive {
@@ -81,16 +81,14 @@ struct SummaryConfigView: View {
                 if let summary = generatedSummary {
                     SummaryResultView(summaryResult: summary)
                         .onDisappear {
-                            // 요약 결과 화면이 닫힐 때 MainView 새로고침 알림
                             NotificationCenter.default.post(name: .summaryCompleted, object: nil)
-                            dismiss() // SummaryConfigView도 닫기
+                            dismiss()
                         }
                 }
             }
             .sheet(isPresented: $showPaywall) {
                 PaywallView(triggerReason: paywallTrigger)
                     .onDisappear {
-                        // Paywall이 닫힐 때 UI 새로고침
                         refreshTrigger.toggle()
                     }
             }
@@ -99,22 +97,12 @@ struct SummaryConfigView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .subscriptionStatusChanged)) { _ in
                 print("💎 [SummaryConfigView] 구독 상태 변경 알림 수신")
-                // UI 새로고침 트리거
                 refreshTrigger.toggle()
             }
             .onChange(of: refreshTrigger) { _, _ in
                 // refreshTrigger가 변경될 때마다 View가 다시 렌더링됨
             }
         }
-    }
-    
-    // MARK: - Background Gradient
-    private var backgroundGradient: some View {
-        AppGradients.backgroundLight
-            .overlay(
-                // Subtle pattern overlay
-                Color.white.opacity(colorScheme == .light ? 0.8 : 0.1)
-            )
     }
     
     // MARK: - Subscription Badge
@@ -125,7 +113,7 @@ struct SummaryConfigView: View {
             Text(usageService.currentSubscriptionTier.displayName)
                 .font(.system(size: 14, weight: .bold))
         }
-        .foregroundColor(.white)
+        .foregroundColor(.white) // 배지 디자인 유지
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(
@@ -135,7 +123,7 @@ struct SummaryConfigView: View {
         )
     }
     
-    // MARK: - Usage Status Section - Premium Glass Design
+    // MARK: - Usage Status Section - System-aligned Design
     private var usageStatusSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             // Header with Status Icon & Upgrade Button
@@ -143,15 +131,11 @@ struct SummaryConfigView: View {
                 // Status Icon
                 ZStack {
                     Circle()
-                        .fill(usageService.isSubscriptionActive ?
-                              AppGradients.buttonAccent : AppGradients.buttonSuccess)
+                        .fill(usageService.isSubscriptionActive ? AppGradients.buttonAccent : AppGradients.buttonSuccess)
                         .frame(width: 56, height: 56)
-                        .shadow(color: (usageService.isSubscriptionActive ?
-                                       AppColors.accent : AppColors.success).opacity(0.3),
-                               radius: 8, x: 0, y: 4)
+                        .shadow(color: (usageService.isSubscriptionActive ? AppColors.accent : AppColors.success).opacity(0.3), radius: 8, x: 0, y: 4)
                     
-                    Image(systemName: usageService.isSubscriptionActive ?
-                          "crown.fill" : "gift.fill")
+                    Image(systemName: usageService.isSubscriptionActive ? "crown.fill" : "gift.fill")
                         .font(.system(size: 24, weight: .semibold))
                         .foregroundColor(.white)
                 }
@@ -184,7 +168,6 @@ struct SummaryConfigView: View {
             
             // Usage Information
             if usageService.isSubscriptionActive {
-                // Subscription Details
                 let stats = usageService.getUsageStats()
                 VStack(alignment: .leading, spacing: 12) {
                     if usageService.currentSubscriptionTier == .basic {
@@ -212,7 +195,6 @@ struct SummaryConfigView: View {
                     }
                 }
             } else {
-                // Free Usage Status
                 usageProgressBar(
                     title: "무료 체험",
                     current: 2 - usageService.remainingFreeUsage,
@@ -223,13 +205,21 @@ struct SummaryConfigView: View {
                 if usageService.remainingFreeUsage == 0 {
                     Text("무료 체험이 완료되었습니다. 계속 이용하려면 구독해주세요.")
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(AppColors.error)
+                        .foregroundColor(.primary)
                         .padding(.top, 8)
                 }
             }
         }
         .padding(24)
-        .glassmorphism()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemGroupedBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        )
     }
     
     // MARK: - Usage Progress Bar
@@ -245,11 +235,10 @@ struct SummaryConfigView: View {
                     .foregroundColor(color)
             }
             
-            // Modern Progress Bar
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.gray.opacity(0.2))
+                        .fill(Color(.systemGray5))
                         .frame(height: 12)
                     
                     RoundedRectangle(cornerRadius: 6)
@@ -271,7 +260,6 @@ struct SummaryConfigView: View {
     // MARK: - Document Info Section - Clean Design
     private var documentInfoSection: some View {
         VStack(alignment: .leading, spacing: 20) {
-            // Section Header
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
@@ -280,7 +268,7 @@ struct SummaryConfigView: View {
                     
                     Image(systemName: "doc.text.fill")
                         .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(AppColors.primaryStart)
+                        .foregroundColor(.primary)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -296,7 +284,6 @@ struct SummaryConfigView: View {
                 Spacer()
             }
             
-            // Document Details - Card Layout
             VStack(spacing: 16) {
                 documentInfoRow(
                     icon: "doc.fill",
@@ -337,7 +324,11 @@ struct SummaryConfigView: View {
             .padding(20)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.secondarySystemGroupedBackground))
+                    .fill(Color(.systemGroupedBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
+                    )
                     .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
             )
         }
@@ -518,7 +509,6 @@ struct SummaryConfigView: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 20) {
-            // Section Header
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
@@ -527,7 +517,7 @@ struct SummaryConfigView: View {
                     
                     Image(systemName: icon)
                         .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(iconColor)
+                        .foregroundColor(.primary)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -543,14 +533,21 @@ struct SummaryConfigView: View {
                 Spacer()
             }
             
-            // Content
             content()
         }
         .padding(24)
-        .glassmorphism()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemGroupedBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        )
     }
     
-    // MARK: - Selection Card - 타입 불일치 오류 수정
+    // MARK: - Selection Card
     private func selectionCard(
         title: String,
         subtitle: String?,
@@ -585,7 +582,7 @@ struct SummaryConfigView: View {
                             )
                     } else {
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.secondarySystemGroupedBackground))
+                            .fill(Color(.systemGroupedBackground))
                     }
                 }
             )
@@ -595,7 +592,7 @@ struct SummaryConfigView: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
     }
     
-    // MARK: - Style Option Card - 타입 불일치 오류 수정
+    // MARK: - Style Option Card
     private func styleOptionCard(
         style: SummaryConfig.OutputStyle,
         isEnabled: Bool,
@@ -604,7 +601,6 @@ struct SummaryConfigView: View {
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 16) {
-                // Style Info
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 12) {
                         Text(style.displayName)
@@ -632,10 +628,9 @@ struct SummaryConfigView: View {
                         .multilineTextAlignment(.leading)
                 }
                 
-                // Selection Indicator
                 ZStack {
                     Circle()
-                        .fill(isSelected && isEnabled ? AppColors.primaryStart : Color.gray.opacity(0.3))
+                        .fill(isSelected && isEnabled ? AppColors.primaryStart : Color(.systemGray4))
                         .frame(width: 24, height: 24)
                     
                     if isSelected && isEnabled {
@@ -651,7 +646,7 @@ struct SummaryConfigView: View {
                     .fill(
                         isSelected && isEnabled ?
                         Color(AppColors.primaryStart.opacity(0.1)) :
-                        Color(.secondarySystemGroupedBackground)
+                        Color(.systemGroupedBackground)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
@@ -681,7 +676,7 @@ struct SummaryConfigView: View {
                     } else {
                         ZStack {
                             Circle()
-                                .fill(Color.white.opacity(0.2))
+                                .fill(Color(.systemGray5))
                                 .frame(width: 32, height: 32)
                             
                             Image(systemName: "wand.and.stars")
@@ -726,7 +721,7 @@ struct SummaryConfigView: View {
                                 )
                         } else {
                             RoundedRectangle(cornerRadius: 20)
-                                .fill(AppGradients.disabled)
+                                .fill(Color(.systemGray5))
                         }
                     }
                 )
@@ -736,7 +731,6 @@ struct SummaryConfigView: View {
             .scaleEffect(isGeneratingSummary ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: isGeneratingSummary)
             
-            // Generation Status or Error Messages
             if !canGenerate() && !isGeneratingSummary {
                 usageLimitMessage
             } else if isGeneratingSummary {
@@ -820,13 +814,12 @@ struct SummaryConfigView: View {
     // MARK: - Generation Progress Info
     private var generationProgressInfo: some View {
         VStack(spacing: 16) {
-            // Progress Steps
             HStack(spacing: 16) {
                 ForEach(0..<3) { step in
                     HStack(spacing: 8) {
                         ZStack {
                             Circle()
-                                .fill(step == 0 ? AppColors.primaryStart : Color.gray.opacity(0.3))
+                                .fill(step == 0 ? AppColors.primaryStart : Color(.systemGray4))
                                 .frame(width: 8, height: 8)
                             
                             if step == 0 {
@@ -840,7 +833,7 @@ struct SummaryConfigView: View {
                         
                         if step < 2 {
                             Rectangle()
-                                .fill(Color.gray.opacity(0.3))
+                                .fill(Color(.systemGray4))
                                 .frame(width: 20, height: 2)
                         }
                     }
@@ -866,28 +859,22 @@ struct SummaryConfigView: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.secondarySystemGroupedBackground))
+                .fill(Color(.systemGroupedBackground))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke(AppColors.primaryStart.opacity(0.2), lineWidth: 1)
+                        .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
                 )
         )
     }
     
     // MARK: - Helper Methods
-    
-    // 구독 상태에 따른 정확한 텍스트 반환
     private func getSubscriptionStatusText() -> String {
         if usageService.isSubscriptionActive {
             switch usageService.currentSubscriptionTier {
-            case .basic:
-                return "Basic 구독중"
-            case .pro:
-                return "Pro 구독중"
-            case .premium:
-                return "Premium 구독중"
-            default:
-                return "구독중"
+            case .basic: return "Basic 구독중"
+            case .pro: return "Pro 구독중"
+            case .premium: return "Premium 구독중"
+            default: return "구독중"
             }
         } else {
             return "무료 체험"
@@ -897,51 +884,36 @@ struct SummaryConfigView: View {
     private func getSubscriptionStatusMessage() -> String {
         if usageService.isSubscriptionActive {
             switch usageService.currentSubscriptionTier {
-            case .basic:
-                return "월 20개 텍스트 카드뉴스 이용 가능"
-            case .pro, .premium:
-                return "무제한 텍스트 및 이미지 카드뉴스"
-            default:
-                return ""
+            case .basic: return "월 20개 텍스트 카드뉴스 이용 가능"
+            case .pro, .premium: return "무제한 텍스트 및 이미지 카드뉴스"
+            default: return ""
             }
         } else {
             return "\(usageService.remainingFreeUsage)/2회 무료 체험 남음"
         }
     }
     
-    // 스타일이 활성화되어 있는지 확인
     private func isStyleEnabled(_ style: SummaryConfig.OutputStyle) -> Bool {
         switch style {
-        case .text:
-            return true // 텍스트는 항상 사용 가능
-        case .webtoon:
-            return false // 웹툰 스타일은 현재 비활성화
-        case .image:
-            return false // 이미지 스타일은 현재 비활성화 (Pro 플랜도 없으므로)
+        case .text: return true
+        case .webtoon: return false
+        case .image: return false
         }
     }
     
-    // 스타일 제한 요구사항 텍스트
     private func getStyleRequirement(_ style: SummaryConfig.OutputStyle) -> String {
         switch style {
-        case .webtoon:
-            return "준비 중"
-        case .image:
-            return "Pro 플랜"
-        case .text:
-            return ""
+        case .webtoon: return "준비 중"
+        case .image: return "Pro 플랜"
+        case .text: return ""
         }
     }
     
-    // 스타일 제한 요구사항 색상
     private func getStyleRequirementColor(_ style: SummaryConfig.OutputStyle) -> Color {
         switch style {
-        case .webtoon:
-            return Color.gray
-        case .image:
-            return AppColors.warning
-        case .text:
-            return Color.clear
+        case .webtoon: return Color.gray
+        case .image: return AppColors.warning
+        case .text: return Color.clear
         }
     }
     
@@ -954,9 +926,7 @@ struct SummaryConfigView: View {
     }
     
     private func setupClaudeAPI() {
-        // Info.plist에서 이미 API 키가 로드되었으므로 추가 설정 불필요
         print("🔍 [SummaryConfigView] API 설정 확인 - isConfigured: \(claudeService.isConfigured)")
-        
         if claudeService.isConfigured {
             print("✅ [SummaryConfigView] Claude API 준비 완료")
         } else {
@@ -975,7 +945,6 @@ struct SummaryConfigView: View {
         print("🔍 [SummaryConfigView] 카드뉴스 생성 시작")
         print("🔧 [SummaryConfigView] 설정: \(summaryConfig.cardCount.displayName), \(summaryConfig.outputStyle.displayName), \(summaryConfig.language.displayName), \(summaryConfig.tone.displayName)")
         
-        // 사용량 제한 확인
         if summaryConfig.outputStyle == .image && !usageService.canCreateImageCardNews() {
             print("❌ [SummaryConfigView] 이미지 카드뉴스 권한 없음")
             paywallTrigger = .imageGenerationRequested
@@ -1000,7 +969,6 @@ struct SummaryConfigView: View {
                 )
                 
                 await MainActor.run {
-                    // 🎯 FIXED: 사용량 기록 - Singleton 사용으로 메인 화면과 동일한 인스턴스
                     if summaryConfig.outputStyle == .image {
                         usageService.recordImageCardNewsUsage()
                     } else {
@@ -1032,7 +1000,6 @@ extension Notification.Name {
 }
 
 #Preview {
-    // 수정된 Preview - DocumentInfo 생성자에 맞춤
     let sampleDocumentInfo = DocumentInfo(
         fileName: "샘플문서.pdf",
         fileSize: 1024000,
