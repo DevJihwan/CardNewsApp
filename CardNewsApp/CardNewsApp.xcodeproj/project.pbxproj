@@ -34,9 +34,22 @@
 		EE4974F02E1B7C9700D63C80 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		EE7C7D6D2E1E3AA90091387D /* Exceptions for "CardNewsApp" folder in "CardNewsApp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = EE4972452E0B855B00D63C80 /* CardNewsApp */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		EE4972482E0B855B00D63C80 /* CardNewsApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				EE7C7D6D2E1E3AA90091387D /* Exceptions for "CardNewsApp" folder in "CardNewsApp" target */,
+			);
 			path = CardNewsApp;
 			sourceTree = "<group>";
 		};
@@ -419,7 +432,7 @@
 				DEVELOPMENT_TEAM = JVUXYR66CL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "CardNewsApp/Info.plist";
+				INFOPLIST_FILE = CardNewsApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -446,7 +459,7 @@
 				DEVELOPMENT_TEAM = JVUXYR66CL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "CardNewsApp/Info.plist";
+				INFOPLIST_FILE = CardNewsApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -479,7 +492,7 @@
 			};
 			name = Debug;
 		};
-		EE49726F2E0B855C00D63C80 /* Release */ = {
+		EE49726F2E0B855C00D63C80 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -513,7 +526,7 @@
 			};
 			name = Debug;
 		};
-		EE4972722E0B855C00D63C80 /* Release */ = {
+		EE4972722E0B855C00D63C80 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -528,6 +541,24 @@
 				TEST_TARGET_NAME = CardNewsApp;
 			};
 			name = Debug;
+		};
+		EE7C7D6B2E1E3A9C0091387D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				PRODUCT_NAME = CardNewsAppTests;
+			};
+			name = Release;
+		};
+		EE7C7D6C2E1E3A9C0091387D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				PRODUCT_NAME = CardNewsAppUITests;
+			};
+			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
@@ -554,7 +585,8 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				EE49726E2E0B855C00D63C80 /* Debug */,
-				EE49726F2E0B855C00D63C80 /* Release */,
+				EE49726F2E0B855C00D63C80 /* Debug */,
+				EE7C7D6B2E1E3A9C0091387D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -563,7 +595,8 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				EE4972712E0B855C00D63C80 /* Debug */,
-				EE4972722E0B855C00D63C80 /* Release */,
+				EE4972722E0B855C00D63C80 /* Debug */,
+				EE7C7D6C2E1E3A9C0091387D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
