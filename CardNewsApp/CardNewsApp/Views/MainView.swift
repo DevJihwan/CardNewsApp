@@ -80,14 +80,52 @@ struct MainView: View {
                     }
             }
             .sheet(isPresented: $showSummaryDetail) {
+                // ✅ 수정: selectedSummary가 nil이면 모달을 열지 않도록 개선
                 if let summary = selectedSummary {
                     SummaryResultView(summaryResult: summary)
                         .onAppear {
-                            print("🔍 [MainView] SummaryResultView 모달 표시")
+                            print("🔍 [MainView] SummaryResultView 모달 표시 - 요약 ID: \(summary.id)")
+                            print("📄 [MainView] 파일명: \(summary.originalDocument.fileName)")
+                            print("🎯 [MainView] 카드 수: \(summary.cards.count)장")
+                        }
+                        .onDisappear {
+                            print("🔍 [MainView] SummaryResultView 모달 닫힘")
+                            // 모달 닫힐 때 선택된 요약 정보 클리어
+                            selectedSummary = nil
                         }
                 } else {
-                    Text("선택된 요약이 없습니다")
-                        .foregroundColor(.red)
+                    // ✅ 개선된 오류 화면
+                    VStack(spacing: 24) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 48))
+                            .foregroundColor(.orange)
+                        
+                        VStack(spacing: 12) {
+                            Text("데이터를 불러올 수 없습니다")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.primary)
+                            
+                            Text("요약 데이터가 손상되었거나 삭제되었을 수 있습니다.")
+                                .font(.system(size: 16))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        
+                        Button("닫기") {
+                            showSummaryDetail = false
+                            selectedSummary = nil
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(Color.blue)
+                        .cornerRadius(8)
+                    }
+                    .padding(40)
+                    .onAppear {
+                        print("❌ [MainView] selectedSummary가 nil 상태로 모달이 열림")
+                    }
                 }
             }
             .sheet(isPresented: $showAllSummaries) {
@@ -114,6 +152,7 @@ struct MainView: View {
                 lastSelectedFileURL = nil
                 selectedFileURL = nil
                 fileSelectionSucceeded = false
+                selectedSummary = nil // ✅ 추가: 선택된 요약도 클리어
             }
             .onReceive(NotificationCenter.default.publisher(for: .subscriptionStatusChanged)) { _ in
                 // UI 자동 업데이트
@@ -543,8 +582,20 @@ struct MainView: View {
     // MARK: - Recent Work Card - 72px minimum height
     private func recentWorkCard(_ summary: SummaryResult) -> some View {
         Button(action: {
-            selectedSummary = summary
-            showSummaryDetail = true
+            // ✅ 수정: 더 안전한 요약 선택 로직
+            print("🔍 [MainView] 요약 카드 클릭: \(summary.originalDocument.fileName)")
+            print("🎯 [MainView] 카드 수: \(summary.cards.count)장")
+            
+            // 카드가 비어있지 않은 경우에만 선택
+            if !summary.cards.isEmpty {
+                selectedSummary = summary
+                showSummaryDetail = true
+                print("✅ [MainView] 요약 선택 완료 - 모달 표시")
+            } else {
+                print("❌ [MainView] 빈 카드 요약 감지 - 모달 표시 건너뜀")
+                // 빈 카드인 경우 사용자에게 알림
+                // TODO: 더 나은 알림 시스템으로 교체 가능
+            }
         }) {
             HStack(spacing: 16) {
                 // Document Icon
@@ -583,15 +634,21 @@ struct MainView: View {
                             .foregroundColor(.secondary)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
+                    } else {
+                        // ✅ 빈 카드인 경우 경고 표시
+                        Text("⚠️ 카드 데이터가 없습니다")
+                            .font(.system(size: 15))
+                            .foregroundColor(.red)
+                            .lineLimit(1)
                     }
                 }
                 
                 Spacer()
                 
-                // Arrow
-                Image(systemName: "chevron.right")
+                // Arrow - 빈 카드인 경우 비활성화 표시
+                Image(systemName: summary.cards.isEmpty ? "exclamationmark.triangle" : "chevron.right")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.blue)
+                    .foregroundColor(summary.cards.isEmpty ? .red : .blue)
             }
             .padding(20)
             .frame(minHeight: 80) // Large touch target
@@ -602,6 +659,7 @@ struct MainView: View {
             )
         }
         .buttonStyle(PlainButtonStyle())
+        .disabled(summary.cards.isEmpty) // ✅ 빈 카드인 경우 버튼 비활성화
     }
     
     // MARK: - Empty State - Encouraging & Clear
@@ -846,8 +904,37 @@ struct MainView: View {
         }
     }
     
+    // ✅ 수정: 더 강화된 데이터 로딩 및 검증
     private func loadRecentSummaries() {
-        recentSummaries = claudeService.loadSavedSummaries()
+        print("🔍 [MainView] 최근 요약 데이터 로딩 시작")
+        
+        let loadedSummaries = claudeService.loadSavedSummaries()
+        print("📊 [MainView] 로딩된 요약 수: \(loadedSummaries.count)개")
+        
+        // 각 요약의 카드 수 검증
+        var validSummaries: [SummaryResult] = []
+        var invalidCount = 0
+        
+        for (index, summary) in loadedSummaries.enumerated() {
+            print("🔍 [MainView] 요약 \(index + 1) 검증: \(summary.originalDocument.fileName)")
+            print("   📄 카드 수: \(summary.cards.count)장")
+            
+            if summary.cards.isEmpty {
+                print("   ❌ 빈 카드 데이터 감지 - 제외")
+                invalidCount += 1
+            } else {
+                print("   ✅ 유효한 데이터")
+                validSummaries.append(summary)
+            }
+        }
+        
+        recentSummaries = validSummaries
+        
+        if invalidCount > 0 {
+            print("⚠️ [MainView] \(invalidCount)개의 손상된 요약 데이터 발견")
+        }
+        
+        print("✅ [MainView] 유효한 요약 \(validSummaries.count)개 로딩 완료")
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -929,8 +1016,11 @@ struct SummaryHistoryView: View {
                             ForEach(summaries, id: \.id) { summary in
                                 summaryHistoryCard(summary)
                                     .onTapGesture {
-                                        selectedSummary = summary
-                                        showSummaryDetail = true
+                                        // ✅ 수정: 빈 카드 검사 후 선택
+                                        if !summary.cards.isEmpty {
+                                            selectedSummary = summary
+                                            showSummaryDetail = true
+                                        }
                                     }
                             }
                         }
@@ -1009,6 +1099,11 @@ struct SummaryHistoryView: View {
                         .foregroundColor(.secondary)
                         .lineLimit(3)
                 }
+            } else {
+                // ✅ 빈 카드인 경우 경고 표시
+                Text("⚠️ 카드 데이터가 손상되었습니다")
+                    .font(.system(size: 15))
+                    .foregroundColor(.red)
             }
         }
         .padding(20)
@@ -1018,6 +1113,7 @@ struct SummaryHistoryView: View {
                 .fill(Color(.secondarySystemGroupedBackground))
                 .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
         )
+        .opacity(summary.cards.isEmpty ? 0.6 : 1.0) // ✅ 빈 카드인 경우 반투명 표시
     }
     
     private func formatHistoryDate(_ date: Date) -> String {
@@ -1045,6 +1141,7 @@ extension Notification.Name {
     static let fileUploadFirstAttemptFailed = Notification.Name("fileUploadFirstAttemptFailed")
     static let fileUploadSuccess = Notification.Name("fileUploadSuccess")
     static let fileUploadUserCancelled = Notification.Name("fileUploadUserCancelled")
+    static let summaryCompleted = Notification.Name("summaryCompleted") // ✅ 추가: 요약 완료 알림
 }
 
 #Preview {
