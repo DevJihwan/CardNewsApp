@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		EE4972912E0B998A00D63C80 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = EE4972902E0B998A00D63C80 /* ZIPFoundation */; };
 		EE4974F12E1B7C9700D63C80 /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = EE4974F02E1B7C9700D63C80 /* Config.xcconfig */; };
-		EE497A002E2E95D000D63C80 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = EE497A012E2E95D000D63C80 /* Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -34,7 +33,6 @@
 		EE4972562E0B855C00D63C80 /* CardNewsAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CardNewsAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE4972602E0B855C00D63C80 /* CardNewsAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CardNewsAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE4974F02E1B7C9700D63C80 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
-		EE497A012E2E95D000D63C80 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "CardNewsApp/Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -90,7 +88,6 @@
 				EE49728F2E0B998A00D63C80 /* Frameworks */,
 				EE4972472E0B855B00D63C80 /* Products */,
 				EE4974F02E1B7C9700D63C80 /* Config.xcconfig */,
-				EE497A012E2E95D000D63C80 /* Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -236,7 +233,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				EE4974F12E1B7C9700D63C80 /* Config.xcconfig in Resources */,
-				EE497A002E2E95D000D63C80 /* Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
