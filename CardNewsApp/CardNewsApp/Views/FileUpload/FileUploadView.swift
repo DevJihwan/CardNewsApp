@@ -841,7 +841,46 @@ struct SafeDocumentPickerRepresentable: UIViewControllerRepresentable {
             }
             
             print("✅ [SafeDocumentPicker] 파일 선택 성공: \(url.lastPathComponent)")
-            onResult(.success(url))
+            
+            // 🔧 Security-Scoped Resource 접근 권한 처리 추가
+            if url.startAccessingSecurityScopedResource() {
+                print("🔐 [SafeDocumentPicker] Security-Scoped Resource 접근 성공")
+                
+                // 파일을 안전한 위치로 복사
+                let tempDirectory = FileManager.default.temporaryDirectory
+                let tempFileName = UUID().uuidString + "." + fileExtension
+                let tempURL = tempDirectory.appendingPathComponent(tempFileName)
+                
+                do {
+                    // 기존 임시 파일이 있다면 삭제
+                    if FileManager.default.fileExists(atPath: tempURL.path) {
+                        try FileManager.default.removeItem(at: tempURL)
+                    }
+                    
+                    // 원본 파일을 임시 위치로 복사
+                    try FileManager.default.copyItem(at: url, to: tempURL)
+                    print("✅ [SafeDocumentPicker] 파일 복사 성공: \(tempURL.lastPathComponent)")
+                    
+                    // Security-Scoped Resource 접근 종료
+                    url.stopAccessingSecurityScopedResource()
+                    print("🔓 [SafeDocumentPicker] Security-Scoped Resource 접근 종료")
+                    
+                    // 복사된 임시 파일 URL로 성공 콜백
+                    onResult(.success(tempURL))
+                    
+                } catch {
+                    print("❌ [SafeDocumentPicker] 파일 복사 실패: \(error)")
+                    // 실패해도 Security-Scoped Resource 접근 종료
+                    url.stopAccessingSecurityScopedResource()
+                    
+                    // 원본 URL로 다시 시도 (백업)
+                    onResult(.success(url))
+                }
+            } else {
+                print("❌ [SafeDocumentPicker] Security-Scoped Resource 접근 실패")
+                // 접근 실패 시에도 원본 URL로 시도 (백업)
+                onResult(.success(url))
+            }
         }
         
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
