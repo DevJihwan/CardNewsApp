@@ -737,7 +737,7 @@ struct SummaryResultView: View {
     }
 }
 
-// MARK: - Modern Card View
+// MARK: - 🆕 개선된 Modern Card View
 
 struct ModernCardView: View {
     let card: SummaryResult.CardContent
@@ -750,151 +750,126 @@ struct ModernCardView: View {
         self.config = config
         self.isCurrentCard = isCurrentCard
         
-        print("🔍 [ModernCardView] 카드 \(card.cardNumber) 생성: '\(card.title)' (내용: \(card.content.prefix(50))...)")
+        print("🔍 [ModernCardView] 카드 \(card.cardNumber) 생성: '\(card.title)' (내용 길이: \(card.content.count)자)")
         print("🎨 [ModernCardView] 출력 스타일: \(config.outputStyle.displayName)")
+        print("📝 [ModernCardView] 카드 내용: \(card.content)")
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // 카드 헤더 - Modern Design
-            VStack(spacing: 20) {
+        VStack(spacing: 24) {
+            // 🆕 카드 헤더 - 간소화된 디자인
+            VStack(spacing: 16) {
                 // 카드 번호 배지
-                HStack {
-                    Spacer()
+                ZStack {
+                    Capsule()
+                        .fill(AppGradients.primary)
+                        .frame(width: 80, height: 32)
+                        .shadow(color: AppColors.primaryStart.opacity(0.3), radius: 4, x: 0, y: 2)
                     
-                    ZStack {
-                        Capsule()
-                            .fill(AppGradients.primary)
-                            .frame(width: 80, height: 36)
-                            .shadow(color: AppColors.primaryStart.opacity(0.3), radius: 4, x: 0, y: 2)
-                        
-                        Text("카드 \(card.cardNumber)")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                    
-                    Spacer()
+                    Text("카드 \(card.cardNumber)")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
                 }
                 
-                // 카드 제목 - Enhanced Typography
+                // 카드 제목
                 Text(card.title)
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(hex: card.textColor ?? "#000000"))
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(hex: card.textColor ?? "#1A1A1A"))
                     .multilineTextAlignment(.center)
                     .lineSpacing(2)
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, 24)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.top, 40)
+            .padding(.top, 20)
+            
+            // 🆕 카드 내용 - 레이아웃 개선
+            VStack(spacing: 20) {
+                Text(card.content)
+                    .font(.system(size: 16, weight: .medium))
+                    .lineSpacing(4)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(Color(hex: card.textColor ?? "#1A1A1A"))
+                    .padding(.horizontal, 24)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                // 🆕 이미지 플레이스홀더 - 조건부 표시
+                if config.outputStyle == .image,
+                   let imagePrompt = card.imagePrompt, !imagePrompt.isEmpty {
+                    VStack(spacing: 12) {
+                        // 이미지 플레이스홀더
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.gray.opacity(0.1))
+                            .frame(height: 120)
+                            .overlay(
+                                VStack(spacing: 8) {
+                                    Image(systemName: "photo")
+                                        .font(.title2)
+                                        .foregroundColor(AppColors.primaryStart)
+                                    
+                                    Text("이미지 생성 예정")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                            )
+                        
+                        // 이미지 프롬프트
+                        Text("💡 \(imagePrompt)")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(Color.gray.opacity(0.1))
+                            )
+                    }
+                    .padding(.horizontal, 24)
+                }
+            }
             
             Spacer()
             
-            // 카드 내용 - Improved Typography
-            ScrollView {
-                VStack(spacing: 16) {
-                    Text(card.content)
-                        .font(.system(size: 18, weight: .medium))
-                        .lineSpacing(6)
-                        .multilineTextAlignment(.center)
-                        .foregroundColor(Color(hex: card.textColor ?? "#000000"))
-                        .padding(.horizontal, 32)
-                    
-                    // ✅ 이미지 플레이스홀더 - 출력 스타일에 따른 조건부 렌더링
-                    if config.outputStyle == .image,
-                       let imagePrompt = card.imagePrompt, !imagePrompt.isEmpty {
-                        VStack(spacing: 12) {
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.gray.opacity(0.1),
-                                            Color.gray.opacity(0.05)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(height: 140)
-                                .overlay(
-                                    VStack(spacing: 12) {
-                                        ZStack {
-                                            Circle()
-                                                .fill(AppColors.primaryStart.opacity(0.1))
-                                                .frame(width: 48, height: 48)
-                                            
-                                            Image(systemName: "photo")
-                                                .font(.title2)
-                                                .foregroundColor(AppColors.primaryStart)
-                                        }
-                                        
-                                        Text("AI 이미지 생성 예정")
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(.secondary)
-                                    }
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                                )
-                            
-                            Text("💡 \(imagePrompt)")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(
-                                    Capsule()
-                                        .fill(Color.gray.opacity(0.1))
-                                )
-                        }
-                        .padding(.horizontal, 32)
-                    }
-                }
-            }
-            .frame(maxHeight: 450)
-            
-            Spacer()
-            
-            // 하단 장식 - Subtle Footer
-            HStack {
-                Spacer()
-                
-                VStack(spacing: 4) {
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(AppColors.primaryStart)
-                            .frame(width: 4, height: 4)
-                        Circle()
-                            .fill(AppColors.primaryEnd)
-                            .frame(width: 4, height: 4)
-                        Circle()
-                            .fill(AppColors.accent)
-                            .frame(width: 4, height: 4)
-                    }
-                    
-                    Text("CardNews")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
+            // 🆕 하단 브랜딩 - 단순화
+            VStack(spacing: 4) {
+                HStack(spacing: 3) {
+                    Circle()
+                        .fill(AppColors.primaryStart)
+                        .frame(width: 3, height: 3)
+                    Circle()
+                        .fill(AppColors.primaryEnd)
+                        .frame(width: 3, height: 3)
+                    Circle()
+                        .fill(AppColors.accent)
+                        .frame(width: 3, height: 3)
                 }
                 
-                Spacer()
+                Text("QuickCard")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary.opacity(0.7))
             }
-            .padding(.bottom, 32)
+            .padding(.bottom, 20)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(hex: card.backgroundColor ?? "#FFFFFF"))
-        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
         .shadow(
-            color: isCurrentCard ? .black.opacity(0.15) : .black.opacity(0.05),
-            radius: isCurrentCard ? 20 : 8,
+            color: isCurrentCard ? .black.opacity(0.12) : .black.opacity(0.04),
+            radius: isCurrentCard ? 16 : 6,
             x: 0,
-            y: isCurrentCard ? 10 : 4
+            y: isCurrentCard ? 8 : 3
         )
-        .scaleEffect(isCurrentCard ? 1.0 : 0.95)
+        .scaleEffect(isCurrentCard ? 1.0 : 0.96)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isCurrentCard)
         .onAppear {
             print("🔍 [ModernCardView] 카드 \(card.cardNumber) 화면에 표시됨")
-            print("🎨 [ModernCardView] 이미지 표시 여부: \(config.outputStyle == .image ? "예" : "아니오")")
+            print("📝 [ModernCardView] 표시될 내용: '\(card.content)'")
+            print("🎨 [ModernCardView] 텍스트 색상: \(card.textColor ?? "기본값")")
+            print("🎨 [ModernCardView] 배경 색상: \(card.backgroundColor ?? "기본값")")
         }
     }
 }
