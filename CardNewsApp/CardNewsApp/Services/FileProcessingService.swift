@@ -37,27 +37,59 @@ class FileProcessingService: ObservableObject {
     
     // 메인 처리 함수
     func processDocument(from url: URL) async throws -> ProcessedDocument {
+        print("🔍 [FileProcessingService] 문서 처리 시작: \(url.lastPathComponent)")
+        
         let fileName = url.lastPathComponent
         let fileExtension = url.pathExtension.lowercased()
         
         // 파일 형식 확인
         guard supportedExtensions.contains(fileExtension) else {
+            print("❌ [FileProcessingService] 지원하지 않는 파일 형식: \(fileExtension)")
             throw FileProcessingError.unsupportedFileType
         }
         
-        // 파일 접근 권한 확인
-        guard url.startAccessingSecurityScopedResource() else {
-            throw FileProcessingError.fileReadError
+        // ⭐️ CRITICAL: 앱 샌드박스 내 파일인지 확인
+        let isInAppSandbox = isFileInAppSandbox(url: url)
+        print("🔍 [FileProcessingService] 앱 샌드박스 내 파일: \(isInAppSandbox)")
+        
+        var needsSecurityScoped = false
+        
+        if !isInAppSandbox {
+            // 앱 샌드박스 외부 파일인 경우에만 Security-Scoped Resource 접근 시도
+            guard url.startAccessingSecurityScopedResource() else {
+                print("❌ [FileProcessingService] Security-Scoped Resource 접근 실패")
+                throw FileProcessingError.fileReadError
+            }
+            needsSecurityScoped = true
+            print("🔐 [FileProcessingService] Security-Scoped Resource 접근 시작")
+        } else {
+            print("✅ [FileProcessingService] 앱 샌드박스 내 파일 - Security-Scoped 접근 불필요")
         }
         
         defer {
-            url.stopAccessingSecurityScopedResource()
+            if needsSecurityScoped {
+                url.stopAccessingSecurityScopedResource()
+                print("🔓 [FileProcessingService] Security-Scoped Resource 접근 종료")
+            }
         }
         
         do {
+            // 파일 존재 및 읽기 권한 확인
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                print("❌ [FileProcessingService] 파일이 존재하지 않음")
+                throw FileProcessingError.fileReadError
+            }
+            
+            guard FileManager.default.isReadableFile(atPath: url.path) else {
+                print("❌ [FileProcessingService] 파일 읽기 권한 없음")
+                throw FileProcessingError.fileReadError
+            }
+            
             // 파일 크기 정보 얻기
             let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey])
             let fileSize = resourceValues.fileSize ?? 0 // Int 타입으로 변경
+            
+            print("✅ [FileProcessingService] 파일 정보 확인 완료: \(fileSize) bytes")
             
             // DocumentInfo 생성 - 수정된 생성자 사용
             let documentInfo = DocumentInfo(
@@ -71,11 +103,14 @@ class FileProcessingService: ObservableObject {
             
             switch fileExtension {
             case "pdf":
+                print("🔍 [FileProcessingService] PDF 파일 처리 시작")
                 content = try await processPDFFile(url: url)
             case "docx":
+                print("🔍 [FileProcessingService] DOCX 파일 처리 시작")
                 content = try await processDocxFile(url: url)
             case "doc":
                 // .doc 파일은 복잡한 바이너리 형식이므로 제한적 지원
+                print("❌ [FileProcessingService] DOC 파일은 지원하지 않음")
                 throw FileProcessingError.unsupportedFileType
             default:
                 throw FileProcessingError.unsupportedFileType
@@ -84,13 +119,17 @@ class FileProcessingService: ObservableObject {
             // 빈 내용 체크
             let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmedContent.isEmpty else {
+                print("❌ [FileProcessingService] 추출된 내용이 비어있음")
                 throw FileProcessingError.emptyContent
             }
+            
+            print("✅ [FileProcessingService] 문서 처리 완료: \(trimmedContent.count)자")
             
             // ProcessedDocument 생성 (DocumentModel 사용)
             return ProcessedDocument(originalDocument: documentInfo, content: trimmedContent)
             
         } catch {
+            print("❌ [FileProcessingService] 문서 처리 오류: \(error)")
             if error is FileProcessingError {
                 throw error
             } else {
@@ -99,18 +138,34 @@ class FileProcessingService: ObservableObject {
         }
     }
     
+    // ⭐️ NEW: 파일이 앱 샌드박스에 있는지 확인
+    private func isFileInAppSandbox(url: URL) -> Bool {
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
+        let sandboxIdentifier = "com.devjihwan.cardnewsapp.CardNewsApp"
+        
+        // 경로에 앱 식별자가 포함되어 있는지 확인
+        return url.path.contains(bundleIdentifier) || 
+               url.path.contains(sandboxIdentifier) ||
+               url.path.contains("/tmp/") ||
+               url.path.contains("/Documents/") ||
+               url.path.contains("/Library/")
+    }
+    
     // MARK: - PDF 파일 처리
     private func processPDFFile(url: URL) async throws -> String {
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
                     guard let pdfDocument = PDFDocument(url: url) else {
+                        print("❌ [FileProcessingService] PDF 문서를 열 수 없음")
                         continuation.resume(throwing: FileProcessingError.pdfProcessingError)
                         return
                     }
                     
                     let pageCount = pdfDocument.pageCount
                     var extractedText = ""
+                    
+                    print("🔍 [FileProcessingService] PDF 페이지 수: \(pageCount)")
                     
                     // 각 페이지에서 텍스트 추출
                     for pageIndex in 0..<pageCount {
@@ -124,9 +179,12 @@ class FileProcessingService: ObservableObject {
                     // 텍스트 정리
                     let cleanedText = self.cleanExtractedText(extractedText)
                     
+                    print("✅ [FileProcessingService] PDF 텍스트 추출 완료: \(cleanedText.count)자")
+                    
                     continuation.resume(returning: cleanedText)
                     
                 } catch {
+                    print("❌ [FileProcessingService] PDF 처리 오류: \(error)")
                     continuation.resume(throwing: FileProcessingError.pdfProcessingError)
                 }
             }
@@ -143,11 +201,14 @@ class FileProcessingService: ObservableObject {
                     let tempDirectory = fileManager.temporaryDirectory
                     let extractPath = tempDirectory.appendingPathComponent(UUID().uuidString)
                     
+                    print("🔍 [FileProcessingService] DOCX 파일 압축 해제 시작")
+                    
                     // ZIP 압축 해제 (ZipFoundation 사용)
                     try fileManager.createDirectory(at: extractPath, withIntermediateDirectories: true)
                     
                     guard let archive = Archive(url: url, accessMode: .read) else {
                         try? fileManager.removeItem(at: extractPath)
+                        print("❌ [FileProcessingService] DOCX 아카이브를 열 수 없음")
                         continuation.resume(throwing: FileProcessingError.wordProcessingError)
                         return
                     }
@@ -155,6 +216,7 @@ class FileProcessingService: ObservableObject {
                     // document.xml 파일 찾기 및 추출
                     guard let documentEntry = archive["word/document.xml"] else {
                         try? fileManager.removeItem(at: extractPath)
+                        print("❌ [FileProcessingService] document.xml을 찾을 수 없음")
                         continuation.resume(throwing: FileProcessingError.wordProcessingError)
                         return
                     }
@@ -164,15 +226,20 @@ class FileProcessingService: ObservableObject {
                         xmlContent += String(data: data, encoding: .utf8) ?? ""
                     }
                     
+                    print("🔍 [FileProcessingService] XML 데이터 추출 완료: \(xmlContent.count)자")
+                    
                     // XML에서 텍스트 추출
                     let extractedText = self.extractTextFromWordXML(xmlContent)
                     
                     // 임시 파일 정리
                     try? fileManager.removeItem(at: extractPath)
                     
+                    print("✅ [FileProcessingService] DOCX 텍스트 추출 완료: \(extractedText.count)자")
+                    
                     continuation.resume(returning: extractedText)
                     
                 } catch {
+                    print("❌ [FileProcessingService] DOCX 처리 오류: \(error)")
                     continuation.resume(throwing: FileProcessingError.wordProcessingError)
                 }
             }
@@ -214,7 +281,7 @@ class FileProcessingService: ObservableObject {
             extractedText = extractedText.replacingOccurrences(of: "</w:p>", with: "\n")
             
         } catch {
-            print("정규식 처리 오류: \(error)")
+            print("❌ [FileProcessingService] 정규식 처리 오류: \(error)")
         }
         
         return cleanExtractedText(extractedText)
