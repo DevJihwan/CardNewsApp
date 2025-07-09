@@ -34,9 +34,16 @@
 		EE4974F02E1B7C9700D63C80 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFile section */
+		EE4975012E1B7D0000D63C80 /* Info.plist */ = {isa = PBXFileSystemSynchronizedBuildFile; fileRef = EE4975002E1B7D0000D63C80 /* Info.plist */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXFileSystemSynchronizedBuildFile section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		EE4972482E0B855B00D63C80 /* CardNewsApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				EE4975012E1B7D0000D63C80 /* Info.plist */,
+			);
 			path = CardNewsApp;
 			sourceTree = "<group>";
 		};
