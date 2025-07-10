@@ -10,6 +10,8 @@ enum FileProcessingError: LocalizedError {
     case wordProcessingError
     case emptyContent
     case corruptedFile
+    case permissionDenied
+    case deviceCompatibilityError
     
     var errorDescription: String? {
         switch self {
@@ -25,6 +27,10 @@ enum FileProcessingError: LocalizedError {
             return "문서에 텍스트 내용이 없습니다."
         case .corruptedFile:
             return "손상된 파일입니다."
+        case .permissionDenied:
+            return "파일 접근 권한이 없습니다."
+        case .deviceCompatibilityError:
+            return "현재 기기에서 파일 처리를 완료할 수 없습니다."
         }
     }
 }
@@ -35,9 +41,14 @@ class FileProcessingService: ObservableObject {
     // 지원하는 파일 형식
     private let supportedExtensions = ["pdf", "docx", "doc"]
     
-    // 메인 처리 함수
+    // iPad 호환성을 위한 재시도 설정
+    private let maxRetryCount = 3
+    private let retryDelay: UInt64 = 1_000_000_000 // 1초
+    
+    // 메인 처리 함수 - iPad 호환성 개선
     func processDocument(from url: URL) async throws -> ProcessedDocument {
         print("🔍 [FileProcessingService] 문서 처리 시작: \(url.lastPathComponent)")
+        print("🔍 [FileProcessingService] 기기 정보: \(UIDevice.current.model) - \(UIDevice.current.systemVersion)")
         
         let fileName = url.lastPathComponent
         let fileExtension = url.pathExtension.lowercased()
@@ -48,22 +59,60 @@ class FileProcessingService: ObservableObject {
             throw FileProcessingError.unsupportedFileType
         }
         
-        // ⭐️ CRITICAL: 앱 샌드박스 내 파일인지 확인
+        // iPad 특화 처리 - 재시도 로직 추가
+        for attempt in 1...maxRetryCount {
+            do {
+                print("🔍 [FileProcessingService] 처리 시도 \(attempt)/\(maxRetryCount)")
+                
+                let result = try await processDocumentInternal(url: url, fileName: fileName, fileExtension: fileExtension)
+                print("✅ [FileProcessingService] 문서 처리 성공 (시도 \(attempt))")
+                return result
+                
+            } catch FileProcessingError.permissionDenied, FileProcessingError.fileReadError {
+                if attempt < maxRetryCount {
+                    print("⏳ [FileProcessingService] 파일 접근 재시도 중... (\(attempt)/\(maxRetryCount))")
+                    try await Task.sleep(nanoseconds: retryDelay)
+                    continue
+                } else {
+                    print("❌ [FileProcessingService] 최종 실패 - 파일 접근 불가")
+                    throw FileProcessingError.permissionDenied
+                }
+            } catch {
+                if attempt < maxRetryCount {
+                    print("⏳ [FileProcessingService] 처리 재시도 중... (\(attempt)/\(maxRetryCount)): \(error)")
+                    try await Task.sleep(nanoseconds: retryDelay)
+                    continue
+                } else {
+                    print("❌ [FileProcessingService] 최종 실패: \(error)")
+                    throw error
+                }
+            }
+        }
+        
+        throw FileProcessingError.deviceCompatibilityError
+    }
+    
+    // 내부 처리 함수
+    private func processDocumentInternal(url: URL, fileName: String, fileExtension: String) async throws -> ProcessedDocument {
+        
+        // iPad용 개선된 파일 접근 방식
         let isInAppSandbox = isFileInAppSandbox(url: url)
         print("🔍 [FileProcessingService] 앱 샌드박스 내 파일: \(isInAppSandbox)")
         
         var needsSecurityScoped = false
         
+        // Security-Scoped Resource 처리 개선
         if !isInAppSandbox {
-            // 앱 샌드박스 외부 파일인 경우에만 Security-Scoped Resource 접근 시도
+            // iPad에서 더 안정적인 접근을 위해 추가 검증
             guard url.startAccessingSecurityScopedResource() else {
                 print("❌ [FileProcessingService] Security-Scoped Resource 접근 실패")
-                throw FileProcessingError.fileReadError
+                throw FileProcessingError.permissionDenied
             }
             needsSecurityScoped = true
             print("🔐 [FileProcessingService] Security-Scoped Resource 접근 시작")
-        } else {
-            print("✅ [FileProcessingService] 앱 샌드박스 내 파일 - Security-Scoped 접근 불필요")
+            
+            // iPad에서 파일 접근 안정화를 위한 지연
+            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
         }
         
         defer {
@@ -74,29 +123,36 @@ class FileProcessingService: ObservableObject {
         }
         
         do {
-            // 파일 존재 및 읽기 권한 확인
+            // 파일 존재 및 읽기 권한 확인 - iPad 호환성 개선
             guard FileManager.default.fileExists(atPath: url.path) else {
-                print("❌ [FileProcessingService] 파일이 존재하지 않음")
+                print("❌ [FileProcessingService] 파일이 존재하지 않음: \(url.path)")
+                throw FileProcessingError.fileReadError
+            }
+            
+            // iPad에서 파일 접근성 추가 검증
+            do {
+                _ = try url.checkResourceIsReachable()
+            } catch {
+                print("❌ [FileProcessingService] 파일 접근 불가: \(error)")
                 throw FileProcessingError.fileReadError
             }
             
             guard FileManager.default.isReadableFile(atPath: url.path) else {
                 print("❌ [FileProcessingService] 파일 읽기 권한 없음")
-                throw FileProcessingError.fileReadError
+                throw FileProcessingError.permissionDenied
             }
             
             // 파일 크기 정보 얻기
             let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey])
-            let fileSize = resourceValues.fileSize ?? 0 // Int 타입으로 변경
+            let fileSize = resourceValues.fileSize ?? 0
             
             print("✅ [FileProcessingService] 파일 정보 확인 완료: \(fileSize) bytes")
             
-            // DocumentInfo 생성 - 수정된 생성자 사용
+            // DocumentInfo 생성
             let documentInfo = DocumentInfo(
                 fileName: fileName,
-                fileSize: fileSize, // Int 타입
+                fileSize: fileSize,
                 fileType: fileExtension.uppercased()
-                // filePath 매개변수 제거됨
             )
             
             let content: String
@@ -125,7 +181,7 @@ class FileProcessingService: ObservableObject {
             
             print("✅ [FileProcessingService] 문서 처리 완료: \(trimmedContent.count)자")
             
-            // ProcessedDocument 생성 (DocumentModel 사용)
+            // ProcessedDocument 생성
             return ProcessedDocument(originalDocument: documentInfo, content: trimmedContent)
             
         } catch {
@@ -138,24 +194,36 @@ class FileProcessingService: ObservableObject {
         }
     }
     
-    // ⭐️ NEW: 파일이 앱 샌드박스에 있는지 확인
+    // 파일이 앱 샌드박스에 있는지 확인 - iPad 호환성 개선
     private func isFileInAppSandbox(url: URL) -> Bool {
         let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
         let sandboxIdentifier = "com.devjihwan.cardnewsapp.CardNewsApp"
         
-        // 경로에 앱 식별자가 포함되어 있는지 확인
-        return url.path.contains(bundleIdentifier) || 
-               url.path.contains(sandboxIdentifier) ||
-               url.path.contains("/tmp/") ||
-               url.path.contains("/Documents/") ||
-               url.path.contains("/Library/")
+        // iPad용 추가 경로 확인
+        let iPadPaths = [
+            "/var/mobile/Containers/Data/Application/",
+            "/private/var/mobile/Containers/",
+            "/System/Library/",
+            "/Applications/"
+        ]
+        
+        let isInSandbox = url.path.contains(bundleIdentifier) || 
+                         url.path.contains(sandboxIdentifier) ||
+                         url.path.contains("/tmp/") ||
+                         url.path.contains("/Documents/") ||
+                         url.path.contains("/Library/") ||
+                         iPadPaths.contains { url.path.contains($0) }
+        
+        print("🔍 [FileProcessingService] 샌드박스 확인: \(isInSandbox) - 경로: \(url.path)")
+        return isInSandbox
     }
     
-    // MARK: - PDF 파일 처리
+    // MARK: - PDF 파일 처리 - iPad 호환성 개선
     private func processPDFFile(url: URL) async throws -> String {
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
+                    // iPad에서 PDF 처리 안정성을 위한 추가 검증
                     guard let pdfDocument = PDFDocument(url: url) else {
                         print("❌ [FileProcessingService] PDF 문서를 열 수 없음")
                         continuation.resume(throwing: FileProcessingError.pdfProcessingError)
@@ -163,21 +231,38 @@ class FileProcessingService: ObservableObject {
                     }
                     
                     let pageCount = pdfDocument.pageCount
+                    guard pageCount > 0 else {
+                        print("❌ [FileProcessingService] PDF 페이지가 없음")
+                        continuation.resume(throwing: FileProcessingError.emptyContent)
+                        return
+                    }
+                    
                     var extractedText = ""
                     
                     print("🔍 [FileProcessingService] PDF 페이지 수: \(pageCount)")
                     
-                    // 각 페이지에서 텍스트 추출
+                    // 각 페이지에서 텍스트 추출 - iPad에서 안정성을 위한 예외처리 강화
                     for pageIndex in 0..<pageCount {
-                        guard let page = pdfDocument.page(at: pageIndex) else { continue }
-                        
-                        if let pageText = page.string {
-                            extractedText += pageText + "\n"
+                        autoreleasepool {
+                            guard let page = pdfDocument.page(at: pageIndex) else { 
+                                print("⚠️ [FileProcessingService] 페이지 \(pageIndex) 로드 실패")
+                                return 
+                            }
+                            
+                            if let pageText = page.string {
+                                extractedText += pageText + "\n"
+                            }
                         }
                     }
                     
                     // 텍스트 정리
                     let cleanedText = self.cleanExtractedText(extractedText)
+                    
+                    guard !cleanedText.isEmpty else {
+                        print("❌ [FileProcessingService] PDF에서 텍스트 추출 실패")
+                        continuation.resume(throwing: FileProcessingError.emptyContent)
+                        return
+                    }
                     
                     print("✅ [FileProcessingService] PDF 텍스트 추출 완료: \(cleanedText.count)자")
                     
@@ -191,7 +276,7 @@ class FileProcessingService: ObservableObject {
         }
     }
     
-    // MARK: - Word(.docx) 파일 처리
+    // MARK: - Word(.docx) 파일 처리 - iPad 호환성 개선
     private func processDocxFile(url: URL) async throws -> String {
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
@@ -203,8 +288,14 @@ class FileProcessingService: ObservableObject {
                     
                     print("🔍 [FileProcessingService] DOCX 파일 압축 해제 시작")
                     
-                    // ZIP 압축 해제 (ZipFoundation 사용)
-                    try fileManager.createDirectory(at: extractPath, withIntermediateDirectories: true)
+                    // ZIP 압축 해제 (ZipFoundation 사용) - iPad 안정성 개선
+                    do {
+                        try fileManager.createDirectory(at: extractPath, withIntermediateDirectories: true)
+                    } catch {
+                        print("❌ [FileProcessingService] 임시 디렉토리 생성 실패: \(error)")
+                        continuation.resume(throwing: FileProcessingError.wordProcessingError)
+                        return
+                    }
                     
                     guard let archive = Archive(url: url, accessMode: .read) else {
                         try? fileManager.removeItem(at: extractPath)
@@ -222,8 +313,15 @@ class FileProcessingService: ObservableObject {
                     }
                     
                     var xmlContent = ""
-                    _ = try archive.extract(documentEntry) { data in
-                        xmlContent += String(data: data, encoding: .utf8) ?? ""
+                    do {
+                        _ = try archive.extract(documentEntry) { data in
+                            xmlContent += String(data: data, encoding: .utf8) ?? ""
+                        }
+                    } catch {
+                        try? fileManager.removeItem(at: extractPath)
+                        print("❌ [FileProcessingService] XML 추출 실패: \(error)")
+                        continuation.resume(throwing: FileProcessingError.wordProcessingError)
+                        return
                     }
                     
                     print("🔍 [FileProcessingService] XML 데이터 추출 완료: \(xmlContent.count)자")
@@ -233,6 +331,12 @@ class FileProcessingService: ObservableObject {
                     
                     // 임시 파일 정리
                     try? fileManager.removeItem(at: extractPath)
+                    
+                    guard !extractedText.isEmpty else {
+                        print("❌ [FileProcessingService] DOCX에서 텍스트 추출 실패")
+                        continuation.resume(throwing: FileProcessingError.emptyContent)
+                        return
+                    }
                     
                     print("✅ [FileProcessingService] DOCX 텍스트 추출 완료: \(extractedText.count)자")
                     
@@ -310,7 +414,7 @@ class FileProcessingService: ObservableObject {
         return preview + "..."
     }
     
-    // MARK: - 파일 정보 유효성 검사
+    // MARK: - 파일 정보 유효성 검사 - iPad 호환성 개선
     func validateFile(at url: URL) -> (isValid: Bool, error: FileProcessingError?) {
         let fileExtension = url.pathExtension.lowercased()
         
@@ -319,12 +423,32 @@ class FileProcessingService: ObservableObject {
             return (false, .unsupportedFileType)
         }
         
-        // 파일 존재 확인
+        // 파일 존재 확인 - iPad 안정성 개선
         do {
             guard try url.checkResourceIsReachable() else {
                 return (false, .fileReadError)
             }
+            
+            // iPad에서 추가 검증
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                return (false, .fileReadError)
+            }
+            
+            // 파일 크기 확인
+            let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey])
+            let fileSize = resourceValues.fileSize ?? 0
+            
+            guard fileSize > 0 else {
+                return (false, .emptyContent)
+            }
+            
+            // 최대 크기 확인 (10MB)
+            guard fileSize <= 10 * 1024 * 1024 else {
+                return (false, .fileReadError)
+            }
+            
         } catch {
+            print("❌ [FileProcessingService] 파일 검증 오류: \(error)")
             return (false, .fileReadError)
         }
         
