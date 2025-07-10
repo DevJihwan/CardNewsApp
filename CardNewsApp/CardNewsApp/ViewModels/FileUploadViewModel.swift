@@ -25,7 +25,7 @@ class FileUploadViewModel: ObservableObject {
     @Published var isProcessed: Bool = false
     @Published var contentPreview: String = ""
     
-    // 요약 설정 화면 관련 상태 ✅ NEW!
+    // 요약 설정 화면 관련 상태
     @Published var showSummaryConfig: Bool = false
     
     // 상수 정의
@@ -65,27 +65,22 @@ class FileUploadViewModel: ObservableObject {
         }
     }
     
-    // ⭐️ IMPROVED: 파일 검증 함수 (Security-Scoped Resource 문제 해결)
+    // 파일 검증 함수 - iPhone 전용으로 간소화
     private func validateFile(_ url: URL) -> Bool {
         print("🔍 [ViewModel] 파일 검증 시작: \(url.lastPathComponent)")
         
         do {
-            // ⭐️ CRITICAL: 앱 샌드박스 내 파일인지 확인
-            let isInAppSandbox = isFileInAppSandbox(url: url)
-            print("🔍 [ViewModel] 앱 샌드박스 내 파일: \(isInAppSandbox)")
-            
+            // Security-Scoped Resource 접근 (iPhone에서 안정적)
             var needsSecurityScoped = false
             
-            if !isInAppSandbox {
-                // 앱 샌드박스 외부 파일인 경우에만 Security-Scoped Resource 접근 시도
+            // 앱 샌드박스 외부 파일인지 확인
+            if !isFileInAppSandbox(url: url) {
                 guard url.startAccessingSecurityScopedResource() else {
                     showErrorMessage("파일에 접근할 수 없습니다.")
                     return false
                 }
                 needsSecurityScoped = true
                 print("🔐 [ViewModel] Security-Scoped Resource 접근 시작")
-            } else {
-                print("✅ [ViewModel] 앱 샌드박스 내 파일 - Security-Scoped 접근 불필요")
             }
             
             // 함수 종료 시 Security-Scoped Resource 정리
@@ -129,7 +124,7 @@ class FileUploadViewModel: ObservableObject {
                 return false
             }
             
-            // 실제 파일 읽기 테스트
+            // 파일 읽기 테스트
             do {
                 let _ = try Data(contentsOf: url, options: .mappedIfSafe)
                 print("✅ [ViewModel] 파일 검증 성공: \(fileSize) bytes")
@@ -147,14 +142,11 @@ class FileUploadViewModel: ObservableObject {
         }
     }
     
-    // ⭐️ NEW: 파일이 앱 샌드박스에 있는지 확인
+    // 파일이 앱 샌드박스에 있는지 확인 - iPhone 전용으로 간소화
     private func isFileInAppSandbox(url: URL) -> Bool {
         let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
-        let sandboxIdentifier = "com.devjihwan.cardnewsapp.CardNewsApp"
         
-        // 경로에 앱 식별자가 포함되어 있는지 확인
-        return url.path.contains(bundleIdentifier) || 
-               url.path.contains(sandboxIdentifier) ||
+        return url.path.contains(bundleIdentifier) ||
                url.path.contains("/tmp/") ||
                url.path.contains("/Documents/") ||
                url.path.contains("/Library/")
@@ -182,7 +174,7 @@ class FileUploadViewModel: ObservableObject {
         return formatter.string(fromByteCount: Int64(bytes))
     }
     
-    // 파일 처리 실행
+    // 파일 처리 실행 - 에러 핸들링 강화
     func processFile() async {
         print("🔍 [DEBUG] processFile 시작")
         
@@ -214,9 +206,11 @@ class FileUploadViewModel: ObservableObject {
             print("🎉 [DEBUG] 파일 처리 완료: \(processed.wordCount)단어, \(processed.characterCount)자")
             
         } catch let error as FileProcessingError {
+            print("❌ [DEBUG] 파일 처리 오류: \(error)")
             showErrorMessage(error.localizedDescription)
         } catch {
-            showErrorMessage("파일 처리 중 예상치 못한 오류가 발생했습니다.\n\(error.localizedDescription)")
+            print("❌ [DEBUG] 예상치 못한 파일 처리 오류: \(error)")
+            showErrorMessage("파일 처리 중 예상치 못한 오류가 발생했습니다.")
         }
         
         isProcessing = false
@@ -237,9 +231,9 @@ class FileUploadViewModel: ObservableObject {
         showError = true
     }
     
-    // ⭐️ IMPROVED: 파일 선택 초기화 (Security-Scoped Resource 정리 개선)
+    // 파일 선택 초기화
     func clearSelectedFile() {
-        // 앱 샌드박스 외부 파일인 경우에만 Security-Scoped Resource 정리
+        // Security-Scoped Resource 정리
         if let url = selectedFileURL, !isFileInAppSandbox(url: url) {
             url.stopAccessingSecurityScopedResource()
         }
@@ -274,7 +268,7 @@ class FileUploadViewModel: ObservableObject {
         }
     }
     
-    // 요약 설정 화면으로 이동 ✅ UPDATED!
+    // 요약 설정 화면으로 이동
     private func proceedToSummaryConfig() {
         guard let processed = processedDocument else { return }
         print("🎯 [DEBUG] 요약 설정 화면으로 이동: \(processed.originalDocument.fileName)")
