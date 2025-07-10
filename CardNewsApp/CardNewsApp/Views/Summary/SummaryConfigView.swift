@@ -994,11 +994,6 @@ struct SummaryConfigView: View {
     }
 }
 
-// MARK: - Notification Extension
-extension Notification.Name {
-    static let summaryCompleted = Notification.Name("summaryCompleted")
-}
-
 #Preview {
     let sampleDocumentInfo = DocumentInfo(
         fileName: "샘플문서.pdf",
