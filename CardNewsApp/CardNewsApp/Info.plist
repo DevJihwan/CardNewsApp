@@ -2,117 +2,100 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>$(DEVELOPMENT_LANGUAGE)</string>
-    <key>CFBundleDisplayName</key>
-    <string>QuickCard</string>
-    <key>CFBundleExecutable</key>
-    <string>$(EXECUTABLE_NAME)</string>
-    <key>CFBundleIdentifier</key>
-    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>$(PRODUCT_NAME)</string>
-    <key>CFBundlePackageType</key>
-    <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>LSRequiresIPhoneOS</key>
-    <true/>
-    <key>UILaunchScreen</key>
-    <dict/>
-    <key>UIRequiredDeviceCapabilities</key>
-    <array>
-        <string>armv7</string>
-    </array>
-    <key>UISupportedInterfaceOrientations</key>
-    <array>
-        <string>UIInterfaceOrientationPortrait</string>
-    </array>
-    
-    <!-- ⭐️ 사진 라이브러리 권한 (iOS 14+ 호환) -->
-    <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>카드뉴스를 갤러리에 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다.</string>
-    
-    <!-- ⭐️ iOS 14 이전 버전 호환성 -->
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>카드뉴스를 갤러리에 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다.</string>
-    
-    <!-- ⭐️ iOS 14+ Limited Photo Library 지원 -->
-    <key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
-    <true/>
-    
-    <!-- 문서 접근 권한 -->
-    <key>NSDocumentsFolderUsageDescription</key>
-    <string>PDF 및 Word 파일을 불러오기 위해 문서 폴더 접근 권한이 필요합니다.</string>
-    
-    <!-- 문서를 제자리에서 열기 지원 -->
-    <key>LSSupportsOpeningDocumentsInPlace</key>
-    <true/>
-    
-    <!-- 앱에서 문서 공유 지원 -->
-    <key>UISupportsDocumentBrowser</key>
-    <true/>
-    
-    <!-- 지원하는 문서 타입 선언 -->
-    <key>CFBundleDocumentTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleTypeName</key>
-            <string>PDF Document</string>
-            <key>CFBundleTypeRole</key>
-            <string>Viewer</string>
-            <key>LSItemContentTypes</key>
-            <array>
-                <string>com.adobe.pdf</string>
-            </array>
-        </dict>
-        <dict>
-            <key>CFBundleTypeName</key>
-            <string>Microsoft Word Document</string>
-            <key>CFBundleTypeRole</key>
-            <string>Viewer</string>
-            <key>LSItemContentTypes</key>
-            <array>
-                <string>org.openxmlformats.wordprocessingml.document</string>
-                <string>com.microsoft.word.doc</string>
-            </array>
-        </dict>
-    </array>
-    
-    <!-- UTI 타입 선언 -->
-    <key>UTImportedTypeDeclarations</key>
-    <array>
-        <dict>
-            <key>UTTypeIdentifier</key>
-            <string>org.openxmlformats.wordprocessingml.document</string>
-            <key>UTTypeReferenceURL</key>
-            <string>http://www.openxmlformats.org</string>
-            <key>UTTypeDescription</key>
-            <string>Microsoft Word Document</string>
-            <key>UTTypeConformsTo</key>
-            <array>
-                <string>public.data</string>
-                <string>public.composite-content</string>
-            </array>
-            <key>UTTypeTagSpecification</key>
-            <dict>
-                <key>public.filename-extension</key>
-                <array>
-                    <string>docx</string>
-                </array>
-                <key>public.mime-type</key>
-                <array>
-                    <string>application/vnd.openxmlformats-officedocument.wordprocessingml.document</string>
-                </array>
-            </dict>
-        </dict>
-    </array>
-    
-    <key>ANTHROPIC_API_KEY</key>
-    <string>$(ANTHROPIC_API_KEY)</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>QuickCard</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>카드뉴스를 갤러리에 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>카드뉴스를 갤러리에 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다.</string>
+	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
+	<true/>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>PDF 및 Word 파일을 불러오기 위해 문서 폴더 접근 권한이 필요합니다.</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>UISupportsDocumentBrowser</key>
+	<true/>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>PDF Document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.adobe.pdf</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Microsoft Word Document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>org.openxmlformats.wordprocessingml.document</string>
+				<string>com.microsoft.word.doc</string>
+			</array>
+		</dict>
+	</array>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.openxmlformats.wordprocessingml.document</string>
+			<key>UTTypeReferenceURL</key>
+			<string>http://www.openxmlformats.org</string>
+			<key>UTTypeDescription</key>
+			<string>Microsoft Word Document</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.composite-content</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>docx</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.openxmlformats-officedocument.wordprocessingml.document</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>ANTHROPIC_API_KEY</key>
+	<string>$(ANTHROPIC_API_KEY)</string>
 </dict>
 </plist>
