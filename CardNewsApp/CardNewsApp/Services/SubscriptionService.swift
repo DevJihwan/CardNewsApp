@@ -1,7 +1,7 @@
 import Foundation
 import StoreKit
 
-/// StoreKit 2 기반 구독 관리 서비스
+/// StoreKit 2 기반 구독 관리 서비스 - iPad 호환성 개선
 @available(iOS 15.0, *)
 class SubscriptionService: ObservableObject {
     
@@ -22,12 +22,13 @@ class SubscriptionService: ObservableObject {
     private var products: [Product] = []
     private var usageService: UsageTrackingService
     private var updateListenerTask: Task<Void, Error>?
-    private var maxRetryCount = 3
+    private var maxRetryCount = 5 // iPad에서 더 많은 재시도 필요
     
     // MARK: - Initialization
     init(usageService: UsageTrackingService) {
         self.usageService = usageService
-        print("💰 [SubscriptionService] 초기화 완료")
+        let deviceType = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        print("💰 [SubscriptionService] 초기화 완료 - 기기: \(deviceType)")
         
         // 트랜잭션 업데이트 리스너 시작
         updateListenerTask = listenForTransactions()
@@ -45,22 +46,30 @@ class SubscriptionService: ObservableObject {
     
     // MARK: - Public Methods
     
-    /// App Store 제품 정보 로드
+    /// App Store 제품 정보 로드 - iPad 호환성 개선
     @MainActor
     func loadProducts() async {
-        print("💰 [SubscriptionService] 제품 정보 로드 시작")
+        let deviceType = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        print("💰 [SubscriptionService] 제품 정보 로드 시작 - 기기: \(deviceType)")
         isLoading = true
         
         for attempt in 1...maxRetryCount {
             do {
-                print("💰 [SubscriptionService] 제품 로드 시도 \(attempt)/\(maxRetryCount)")
-                let storeProducts = try await Product.products(for: productIDs)
+                print("💰 [SubscriptionService] 제품 로드 시도 \(attempt)/\(maxRetryCount) - 기기: \(deviceType)")
+                
+                // iPad에서 더 긴 타임아웃 허용
+                let timeoutDuration: TimeInterval = UIDevice.current.userInterfaceIdiom == .pad ? 10.0 : 5.0
+                
+                let storeProducts = try await withTimeout(timeoutDuration) {
+                    try await Product.products(for: productIDs)
+                }
                 
                 if storeProducts.isEmpty {
-                    print("⚠️ [SubscriptionService] 로드된 제품이 없음. StoreKit Configuration 확인 필요")
+                    print("⚠️ [SubscriptionService] 로드된 제품이 없음 - 기기: \(deviceType). StoreKit Configuration 확인 필요")
                     if attempt < maxRetryCount {
-                        print("💰 [SubscriptionService] 1초 후 재시도...")
-                        try await Task.sleep(nanoseconds: 1_000_000_000) // 1초 대기
+                        let delay = UIDevice.current.userInterfaceIdiom == .pad ? 2.0 : 1.0
+                        print("💰 [SubscriptionService] \(delay)초 후 재시도... - 기기: \(deviceType)")
+                        try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                         continue
                     } else {
                         throw SubscriptionError.productNotFound
@@ -69,7 +78,7 @@ class SubscriptionService: ObservableObject {
                 
                 self.products = storeProducts.sorted { $0.price < $1.price }
                 
-                print("✅ [SubscriptionService] \(products.count)개 제품 로드 완료")
+                print("✅ [SubscriptionService] \(products.count)개 제품 로드 완료 - 기기: \(deviceType)")
                 for product in products {
                     print("   📦 ID: \(product.id), 이름: \(product.displayName), 가격: \(product.displayPrice)")
                 }
@@ -78,28 +87,35 @@ class SubscriptionService: ObservableObject {
                 break
                 
             } catch {
-                print("❌ [SubscriptionService] 제품 로드 실패 (시도 \(attempt)): \(error)")
+                print("❌ [SubscriptionService] 제품 로드 실패 (시도 \(attempt)) - 기기: \(deviceType): \(error)")
                 
                 if attempt == maxRetryCount {
-                    // 최종 실패 시 더 자세한 에러 정보 제공
+                    // iPad에 맞춤화된 에러 메시지
+                    let deviceSpecificMessage = UIDevice.current.userInterfaceIdiom == .pad ?
+                        "iPad에서 제품 정보 로드에 실패했습니다." :
+                        "제품 정보를 불러올 수 없습니다."
+                    
                     let detailError = """
-                    제품 정보를 불러올 수 없습니다.
+                    \(deviceSpecificMessage)
                     
                     가능한 원인:
                     1. StoreKit Configuration 파일이 Scheme에 설정되지 않음
-                    2. 시뮬레이터에서 StoreKit 테스팅이 비활성화됨
+                    2. \(deviceType)에서 StoreKit 테스팅이 비활성화됨
                     3. 네트워크 연결 문제
+                    4. Apple 서버 일시적 문제
                     
                     해결 방법:
                     1. Xcode > Edit Scheme > Run > Options > StoreKit Configuration 확인
-                    2. 시뮬레이터 재시작
+                    2. \(deviceType) 재시작
                     3. 실제 기기에서 테스트
+                    4. 잠시 후 다시 시도
                     
                     에러: \(error.localizedDescription)
                     """
                     errorMessage = detailError
                 } else {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000) // 1초 대기 후 재시도
+                    let delay = UIDevice.current.userInterfaceIdiom == .pad ? 2.0 : 1.0
+                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 }
             }
         }
@@ -107,29 +123,34 @@ class SubscriptionService: ObservableObject {
         isLoading = false
     }
     
-    /// 구독 상품 구매
+    /// 구독 상품 구매 - iPad 호환성 개선
     @MainActor
     func purchase(productID: String) async {
-        print("💰 [SubscriptionService] 구매 시작: \(productID)")
+        let deviceType = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        print("💰 [SubscriptionService] 구매 시작: \(productID) - 기기: \(deviceType)")
         
         // 제품이 로드되지 않은 경우 먼저 로드 시도
         if products.isEmpty {
-            print("💰 [SubscriptionService] 제품이 로드되지 않음. 제품 로드 시도...")
+            print("💰 [SubscriptionService] 제품이 로드되지 않음. 제품 로드 시도... - 기기: \(deviceType)")
             await loadProducts()
         }
         
         guard let product = products.first(where: { $0.id == productID }) else {
-            print("❌ [SubscriptionService] 제품을 찾을 수 없음: \(productID)")
+            print("❌ [SubscriptionService] 제품을 찾을 수 없음: \(productID) - 기기: \(deviceType)")
             print("💰 [SubscriptionService] 현재 로드된 제품들:")
             for p in products {
                 print("   📦 \(p.id)")
             }
             
             if products.isEmpty {
-                errorMessage = """
-                제품 정보가 로드되지 않았습니다.
+                let deviceSpecificMessage = UIDevice.current.userInterfaceIdiom == .pad ?
+                    "iPad에서 제품 정보가 로드되지 않았습니다." :
+                    "제품 정보가 로드되지 않았습니다."
                 
-                시뮬레이터에서 테스트하는 경우:
+                errorMessage = """
+                \(deviceSpecificMessage)
+                
+                \(deviceType)에서 테스트하는 경우:
                 1. Xcode > Edit Scheme > Run > Options
                 2. StoreKit Configuration에서 'Configuration.storekit' 선택
                 3. 앱 재실행
@@ -145,69 +166,103 @@ class SubscriptionService: ObservableObject {
         purchaseState = .purchasing
         
         do {
-            print("💰 [SubscriptionService] 제품 구매 요청: \(product.displayName) (\(product.displayPrice))")
-            let result = try await product.purchase()
+            print("💰 [SubscriptionService] 제품 구매 요청: \(product.displayName) (\(product.displayPrice)) - 기기: \(deviceType)")
+            
+            // iPad에서 구매 프로세스에 더 긴 타임아웃 허용
+            let timeoutDuration: TimeInterval = UIDevice.current.userInterfaceIdiom == .pad ? 60.0 : 30.0
+            
+            let result = try await withTimeout(timeoutDuration) {
+                try await product.purchase()
+            }
             
             switch result {
             case .success(let verification):
                 await handleSuccessfulPurchase(verification: verification, product: product)
                 
             case .userCancelled:
-                print("🔄 [SubscriptionService] 사용자가 구매 취소")
+                print("🔄 [SubscriptionService] 사용자가 구매 취소 - 기기: \(deviceType)")
                 purchaseState = .cancelled
                 
             case .pending:
-                print("⏳ [SubscriptionService] 구매 대기 중")
+                print("⏳ [SubscriptionService] 구매 대기 중 - 기기: \(deviceType)")
                 purchaseState = .pending
                 
             @unknown default:
-                print("❓ [SubscriptionService] 알 수 없는 구매 결과")
+                print("❓ [SubscriptionService] 알 수 없는 구매 결과 - 기기: \(deviceType)")
                 purchaseState = .failed
             }
             
         } catch {
-            print("❌ [SubscriptionService] 구매 실패: \(error)")
-            errorMessage = "구매에 실패했습니다: \(error.localizedDescription)"
+            print("❌ [SubscriptionService] 구매 실패 - 기기: \(deviceType): \(error)")
+            
+            let deviceSpecificMessage = UIDevice.current.userInterfaceIdiom == .pad ?
+                "iPad에서 구매에 실패했습니다" :
+                "구매에 실패했습니다"
+            
+            errorMessage = "\(deviceSpecificMessage): \(error.localizedDescription)"
             purchaseState = .failed
         }
     }
     
-    /// 구매 복원
+    /// 구매 복원 - iPad 호환성 개선
     @MainActor
     func restorePurchases() async {
-        print("💰 [SubscriptionService] 구매 복원 시작")
+        let deviceType = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        print("💰 [SubscriptionService] 구매 복원 시작 - 기기: \(deviceType)")
         isLoading = true
         
         do {
-            try await AppStore.sync()
+            // iPad에서 더 긴 타임아웃 허용
+            let timeoutDuration: TimeInterval = UIDevice.current.userInterfaceIdiom == .pad ? 30.0 : 15.0
+            
+            try await withTimeout(timeoutDuration) {
+                try await AppStore.sync()
+            }
+            
             await checkSubscriptionStatus()
-            print("✅ [SubscriptionService] 구매 복원 완료")
+            print("✅ [SubscriptionService] 구매 복원 완료 - 기기: \(deviceType)")
         } catch {
-            print("❌ [SubscriptionService] 구매 복원 실패: \(error)")
-            errorMessage = "구매 복원에 실패했습니다: \(error.localizedDescription)"
+            print("❌ [SubscriptionService] 구매 복원 실패 - 기기: \(deviceType): \(error)")
+            
+            let deviceSpecificMessage = UIDevice.current.userInterfaceIdiom == .pad ?
+                "iPad에서 구매 복원에 실패했습니다" :
+                "구매 복원에 실패했습니다"
+            
+            errorMessage = "\(deviceSpecificMessage): \(error.localizedDescription)"
         }
         
         isLoading = false
     }
     
-    /// 현재 구독 상태 확인
+    /// 현재 구독 상태 확인 - iPad 호환성 개선
     func checkSubscriptionStatus() async {
-        print("💰 [SubscriptionService] 구독 상태 확인 시작")
+        let deviceType = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        print("💰 [SubscriptionService] 구독 상태 확인 시작 - 기기: \(deviceType)")
         
         var activeSubscription: SubscriptionTier = .none
         
-        for await result in Transaction.currentEntitlements {
-            do {
-                let transaction = try checkVerified(result)
-                
-                if let tier = getSubscriptionTier(from: transaction.productID) {
-                    activeSubscription = tier
-                    print("✅ [SubscriptionService] 활성 구독 발견: \(tier.displayName)")
+        do {
+            // iPad에서 더 안정적인 처리를 위한 타임아웃
+            let timeoutDuration: TimeInterval = UIDevice.current.userInterfaceIdiom == .pad ? 15.0 : 10.0
+            
+            try await withTimeout(timeoutDuration) {
+                for await result in Transaction.currentEntitlements {
+                    do {
+                        let transaction = try checkVerified(result)
+                        
+                        if let tier = getSubscriptionTier(from: transaction.productID) {
+                            activeSubscription = tier
+                            print("✅ [SubscriptionService] 활성 구독 발견: \(tier.displayName) - 기기: \(deviceType)")
+                        }
+                        
+                    } catch {
+                        print("❌ [SubscriptionService] 트랜잭션 검증 실패 - 기기: \(deviceType): \(error)")
+                    }
                 }
-                
-            } catch {
-                print("❌ [SubscriptionService] 트랜잭션 검증 실패: \(error)")
             }
+        } catch {
+            print("❌ [SubscriptionService] 구독 상태 확인 타임아웃 - 기기: \(deviceType): \(error)")
+            // 타임아웃이 발생해도 계속 진행 (기본값 사용)
         }
         
         await MainActor.run {
@@ -238,6 +293,8 @@ class SubscriptionService: ObservableObject {
     // MARK: - Private Methods
     
     private func handleSuccessfulPurchase(verification: VerificationResult<Transaction>, product: Product) async {
+        let deviceType = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        
         do {
             let transaction = try checkVerified(verification)
             
@@ -251,14 +308,14 @@ class SubscriptionService: ObservableObject {
                     NotificationCenter.default.post(name: .subscriptionStatusChanged, object: nil)
                 }
                 
-                print("🎉 [SubscriptionService] 구매 성공: \(tier.displayName)")
+                print("🎉 [SubscriptionService] 구매 성공: \(tier.displayName) - 기기: \(deviceType)")
             }
             
             // 트랜잭션 완료 처리
             await transaction.finish()
             
         } catch {
-            print("❌ [SubscriptionService] 구매 검증 실패: \(error)")
+            print("❌ [SubscriptionService] 구매 검증 실패 - 기기: \(deviceType): \(error)")
             await MainActor.run {
                 errorMessage = "구매 검증에 실패했습니다"
                 purchaseState = .failed
@@ -298,7 +355,8 @@ class SubscriptionService: ObservableObject {
                     await self.updateSubscriptionStatus(for: transaction)
                     await transaction.finish()
                 } catch {
-                    print("❌ [SubscriptionService] 트랜잭션 업데이트 처리 실패: \(error)")
+                    let deviceType = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+                    print("❌ [SubscriptionService] 트랜잭션 업데이트 처리 실패 - 기기: \(deviceType): \(error)")
                 }
             }
         }
@@ -310,6 +368,26 @@ class SubscriptionService: ObservableObject {
                 usageService.updateSubscription(isActive: true, tier: tier)
                 NotificationCenter.default.post(name: .subscriptionStatusChanged, object: nil)
             }
+        }
+    }
+}
+
+// MARK: - Timeout Helper
+extension SubscriptionService {
+    private func withTimeout<T>(_ timeout: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
+        return try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                throw SubscriptionError.timeout
+            }
+            
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
         }
     }
 }
@@ -346,6 +424,7 @@ enum SubscriptionError: Error, LocalizedError {
     case failedVerification
     case productNotFound
     case purchaseFailed
+    case timeout
     
     var errorDescription: String? {
         switch self {
@@ -355,6 +434,8 @@ enum SubscriptionError: Error, LocalizedError {
             return "제품을 찾을 수 없습니다"
         case .purchaseFailed:
             return "구매에 실패했습니다"
+        case .timeout:
+            return "요청 시간이 초과되었습니다"
         }
     }
 }
