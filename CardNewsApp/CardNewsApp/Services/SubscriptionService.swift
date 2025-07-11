@@ -61,7 +61,7 @@ class SubscriptionService: ObservableObject {
                 let timeoutDuration: TimeInterval = UIDevice.current.userInterfaceIdiom == .pad ? 10.0 : 5.0
                 
                 let storeProducts = try await withTimeout(timeoutDuration) {
-                    try await Product.products(for: productIDs)
+                    try await Product.products(for: self.productIDs)
                 }
                 
                 if storeProducts.isEmpty {
@@ -248,9 +248,9 @@ class SubscriptionService: ObservableObject {
             try await withTimeout(timeoutDuration) {
                 for await result in Transaction.currentEntitlements {
                     do {
-                        let transaction = try checkVerified(result)
+                        let transaction = try self.checkVerified(result)
                         
-                        if let tier = getSubscriptionTier(from: transaction.productID) {
+                        if let tier = self.getSubscriptionTier(from: transaction.productID) {
                             activeSubscription = tier
                             print("✅ [SubscriptionService] 활성 구독 발견: \(tier.displayName) - 기기: \(deviceType)")
                         }
@@ -266,10 +266,9 @@ class SubscriptionService: ObservableObject {
         }
         
         await MainActor.run {
-            let isActive = activeSubscription != .none
-            usageService.updateSubscription(isActive: isActive, tier: activeSubscription)
+            usageService.updateSubscription(isActive: activeSubscription != .none, tier: activeSubscription)
             
-            if isActive {
+            if activeSubscription != .none {
                 purchaseState = .purchased
             }
         }
