@@ -2,7 +2,7 @@ import Foundation
 import PDFKit
 import ZIPFoundation
 
-// 파일 처리 에러 타입
+// 파일 처리 에러 타입 - 다국어 지원 개선
 enum FileProcessingError: LocalizedError {
     case unsupportedFileType
     case fileReadError
@@ -13,21 +13,23 @@ enum FileProcessingError: LocalizedError {
     case permissionDenied
     
     var errorDescription: String? {
+        let isKorean = Locale.current.language.languageCode?.identifier == "ko"
+        
         switch self {
         case .unsupportedFileType:
-            return "지원하지 않는 파일 형식입니다."
+            return isKorean ? "지원하지 않는 파일 형식입니다. PDF 또는 Word(.docx) 파일만 업로드 가능합니다." : "Unsupported file format. Only PDF and Word (.docx) files are supported."
         case .fileReadError:
-            return "파일을 읽을 수 없습니다."
+            return isKorean ? "파일을 읽을 수 없습니다." : "Unable to read the file."
         case .pdfProcessingError:
-            return "PDF 파일 처리 중 오류가 발생했습니다."
+            return isKorean ? "PDF 파일 처리 중 오류가 발생했습니다." : "An error occurred while processing the PDF file."
         case .wordProcessingError:
-            return "Word 파일 처리 중 오류가 발생했습니다."
+            return isKorean ? "Word 파일 처리 중 오류가 발생했습니다." : "An error occurred while processing the Word file."
         case .emptyContent:
-            return "문서에 텍스트 내용이 없습니다."
+            return isKorean ? "문서에 텍스트 내용이 없습니다." : "The document contains no text content."
         case .corruptedFile:
-            return "손상된 파일입니다."
+            return isKorean ? "손상된 파일입니다." : "The file is corrupted."
         case .permissionDenied:
-            return "파일 접근 권한이 없습니다."
+            return isKorean ? "파일 접근 권한이 없습니다." : "File access permission denied."
         }
     }
 }
@@ -35,8 +37,8 @@ enum FileProcessingError: LocalizedError {
 // 파일 처리 서비스 클래스 - iPhone/iPad 호환성 개선
 class FileProcessingService: ObservableObject {
     
-    // 지원하는 파일 형식
-    private let supportedExtensions = ["pdf", "docx", "doc"]
+    // 지원하는 파일 형식 - .doc 제거 (실제로 지원하지 않음)
+    private let supportedExtensions = ["pdf", "docx"]
     
     // 재시도 설정 - iPad 호환성 강화
     private let maxRetryCount = 3
@@ -51,9 +53,10 @@ class FileProcessingService: ObservableObject {
         let fileName = url.lastPathComponent
         let fileExtension = url.pathExtension.lowercased()
         
-        // 파일 형식 확인
+        // 파일 형식 확인 - 더 엄격한 검증
         guard supportedExtensions.contains(fileExtension) else {
             print("❌ [FileProcessingService] 지원하지 않는 파일 형식: \(fileExtension)")
+            print("🔍 [FileProcessingService] 지원 형식: \(supportedExtensions.joined(separator: ", "))")
             throw FileProcessingError.unsupportedFileType
         }
         
@@ -204,11 +207,9 @@ class FileProcessingService: ObservableObject {
             case "docx":
                 print("🔍 [FileProcessingService] DOCX 파일 처리 시작 - 기기: \(deviceType)")
                 content = try await processDocxFile(url: url)
-            case "doc":
-                // .doc 파일은 복잡한 바이너리 형식이므로 제한적 지원
-                print("❌ [FileProcessingService] DOC 파일은 지원하지 않음 - 기기: \(deviceType)")
-                throw FileProcessingError.unsupportedFileType
             default:
+                // 더 이상 .doc 파일 지원하지 않음
+                print("❌ [FileProcessingService] 지원하지 않는 파일 형식: \(fileExtension) - 기기: \(deviceType)")
                 throw FileProcessingError.unsupportedFileType
             }
             
