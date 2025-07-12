@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct FileUploadView: View {
     @StateObject private var viewModel = FileUploadViewModel()
@@ -799,9 +800,13 @@ struct SafeDocumentPickerRepresentable: UIViewControllerRepresentable {
     let onResult: (Result<URL, Error>) -> Void
     
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        // ⚠️ FIX: PDF와 DOCX만 허용하도록 수정
         let picker = UIDocumentPickerViewController(
-            forOpeningContentTypes: [.pdf, .data],
-            asCopy: true  // ⭐️ CRITICAL: 파일을 앱으로 복사
+            forOpeningContentTypes: [
+                .pdf,  // PDF 파일
+                UTType(filenameExtension: "docx")!  // Word 파일
+            ],
+            asCopy: true  // 파일을 앱으로 복사
         )
         
         picker.delegate = context.coordinator
@@ -1084,7 +1089,7 @@ struct SafeDocumentPickerRepresentable: UIViewControllerRepresentable {
             
             // 특수문자 제거 및 길이 제한
             let sanitized = nameWithoutExtension
-                .replacingOccurrences(of: "[\\/:\\*\\?\"<>\\|\\(\\)]", with: "_", options: .regularExpression)
+                .replacingOccurrences(of: "[/:\\*\\?\"<>\\|\\(\\)]", with: "_", options: .regularExpression)
                 .replacingOccurrences(of: "\\s+", with: "_", options: .regularExpression)
                 .replacingOccurrences(of: "[^a-zA-Z0-9가-힣_]", with: "_", options: .regularExpression)
                 .prefix(30) // 파일명 길이 제한을 더 짧게
@@ -1101,41 +1106,6 @@ struct SafeDocumentPickerRepresentable: UIViewControllerRepresentable {
             print("🔄 [SafeDocumentPicker] 선택 취소됨")
             onResult(.failure(DocumentPickerError.userCancelled))
         }
-    }
-}
-
-// MARK: - Enhanced Document Picker Errors
-
-enum DocumentPickerError: LocalizedError, CustomStringConvertible {
-    case userCancelled
-    case noFileSelected
-    case unsupportedFileType
-    case viewServiceError
-    case fileAccessDenied
-    case fileCorrupted
-    case securityScopedResourceFailed
-    
-    var errorDescription: String? {
-        switch self {
-        case .userCancelled:
-            return "파일 선택이 취소되었습니다"
-        case .noFileSelected:
-            return "파일이 선택되지 않았습니다"
-        case .unsupportedFileType:
-            return "지원하지 않는 파일 형식입니다 (PDF 또는 DOCX만 지원)"
-        case .viewServiceError:
-            return "파일 선택 중 시스템 오류가 발생했습니다"
-        case .fileAccessDenied:
-            return "파일에 접근할 수 없습니다. 권한을 확인해주세요"
-        case .fileCorrupted:
-            return "파일이 손상되었거나 읽을 수 없습니다"
-        case .securityScopedResourceFailed:
-            return "파일 보안 접근 권한을 얻을 수 없습니다"
-        }
-    }
-    
-    var description: String {
-        return errorDescription ?? "알 수 없는 오류"
     }
 }
 
