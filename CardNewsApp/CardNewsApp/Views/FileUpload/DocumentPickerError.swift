@@ -1,3 +1,5 @@
+import Foundation
+
 // MARK: - Enhanced Document Picker Errors - 다국어 지원
 
 enum DocumentPickerError: LocalizedError, CustomStringConvertible {
